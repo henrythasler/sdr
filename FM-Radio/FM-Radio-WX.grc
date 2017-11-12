@@ -101,7 +101,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(792, 136)</value>
+      <value>(792, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -160,7 +160,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(128, 128)</value>
+      <value>(144, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -219,7 +219,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(8, 128)</value>
+      <value>(8, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -305,7 +305,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(344, 128)</value>
+      <value>(328, 120)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -364,7 +364,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(968, 472)</value>
+      <value>(792, 504)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -392,7 +392,7 @@
     </param>
     <param>
       <key>notebook</key>
-      <value>Notebook, 2</value>
+      <value>Notebook, 1</value>
     </param>
     <param>
       <key>num_steps</key>
@@ -419,7 +419,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(744, 528)</value>
+      <value>(1056, 36)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -435,7 +435,7 @@
     </param>
     <param>
       <key>labels</key>
-      <value>['Tuner', 'RF Spectrum', 'Audio Spectrum']</value>
+      <value>['Tuner', 'Audio']</value>
     </param>
     <param>
       <key>notebook</key>
@@ -470,7 +470,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(312, 588)</value>
+      <value>(312, 620)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -517,7 +517,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1136, 596)</value>
+      <value>(1064, 628)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -564,7 +564,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(968, 596)</value>
+      <value>(792, 628)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -753,7 +753,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(536, 576)</value>
+      <value>(536, 608)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -2290,7 +2290,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(968, 652)</value>
+      <value>(792, 716)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -2306,7 +2306,7 @@
     </param>
     <param>
       <key>notebook</key>
-      <value>Notebook, 2</value>
+      <value>Notebook, 1</value>
     </param>
     <param>
       <key>peak_hold</key>
@@ -2322,7 +2322,7 @@
     </param>
     <param>
       <key>fft_rate</key>
-      <value>60</value>
+      <value>20</value>
     </param>
     <param>
       <key>samp_rate</key>
@@ -2393,7 +2393,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1048, 244)</value>
+      <value>(1048, 236)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -2409,7 +2409,7 @@
     </param>
     <param>
       <key>notebook</key>
-      <value>Notebook, 1</value>
+      <value>Notebook, 0</value>
     </param>
     <param>
       <key>peak_hold</key>
@@ -2425,7 +2425,7 @@
     </param>
     <param>
       <key>fft_rate</key>
-      <value>15</value>
+      <value>150</value>
     </param>
     <param>
       <key>samp_rate</key>

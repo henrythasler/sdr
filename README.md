@@ -5,6 +5,14 @@ collection of software defined radio (SDR) stuff
 
 I use a RTL2832U-based USB-receiver [RTL_SDR by Radioddity](https://www.radioddity.com/radioddity-100khz-1766mhz-0-1mhz-1-7ghz-full-band-uhf-vhf-hf-rtl-sdr-usb-tuner-receiver.html). It is shipped with a monopole antenna which works o.k. for most beginner use-cases (e.g. FM-Radio, 433MHz)
 
+See https://www.rtl-sdr.com/ for more info.
+
+# Software
+## CubicSDR
+http://cubicsdr.com/
+
+## Gnu Radio
+
 # Projects
 * FM-Radio
 
