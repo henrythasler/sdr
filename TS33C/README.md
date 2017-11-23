@@ -8,10 +8,18 @@ Item | Value | Description
 Frequency  | 433.964MHz |
 
 # Decoding Rules
-|Short | Long
+Pulse and gap lengths are decoded as follows:
+
+| dt <= 775µs | dt > 775µs | dt > 1550µs
 --- | --- |
-**Pulse** | `1` | `0`
-**Gap** | *(skip)* | `0`
+Symbol | `Short` | `Long` | `Reset`
+
+Symbols are decoded as follows:
+
+|Short | Long | Reset
+--- | --- |
+Pulse | `1` | `0` | *Error*
+Gap | *(skip)* | `0` | *Reset*
 
 * reverse
 * XOR 0xFF

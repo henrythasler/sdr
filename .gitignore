@@ -3,3 +3,5 @@ top_block.py
 *.wav
 
 *.dat
+
+blocks/gr-bitmap/build/
