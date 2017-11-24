@@ -24,6 +24,14 @@ Gap | *(skip)* | `0` | *Reset*
 * reverse
 * XOR 0xFF
 
+# stream decoding
+GNU radio block process the raw data in chunks. So the decoder must be able to handle
+these as well. The following situation can occur:
+
+Current State | idle | packet
+--- | --- | ---
+New State | x |
+
 # Decoding Tool
 Use the [rtl_433-tool](https://github.com/merbanan/rtl_433) to decode the values for reference or analyze the radio data.
 
