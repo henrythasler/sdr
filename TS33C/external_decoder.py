@@ -26,10 +26,12 @@ if __name__ == "__main__":
     edge_positions = np.ravel(np.nonzero(edges))
     #print("edge_positions:", edge_positions)
 
-    # lengths of pulses and pauses are our symbols
-    symbols = np.diff(edge_positions)
-    # extract pulses and convert to µs
-    pulses = symbols[0::2]*1e6/SAMPLERATE
+    # lengths of pulses and pauses are our symbols, convert to µs
+    symbols = np.diff(edge_positions)*1e6/SAMPLERATE
+    print("symbols", symbols.size, symbols)
+
+    # extract pulses
+    pulses = symbols[0::2]
     print(np.histogram(pulses, bins=[0,short_limit,2*short_limit,100000]))
 
     # extract gaps; add long gap at the end for symmetry with pulses

@@ -323,7 +323,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>0</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -370,7 +370,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>0</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -566,7 +566,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -774,7 +774,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>0</value>
     </param>
     <param>
       <key>file</key>
@@ -809,11 +809,12 @@
     </param>
     <param>
       <key>_io_cache</key>
-      <value>('Decoder Block', 'blk', [('stream_rate', '1.0')], [('0', 'byte', 1)], [('0', 'byte', 1)], 'Embedded Python Block example - a simple multiply const', ['stream_rate'])</value>
+      <value>('Decoder Block', 'blk', [('sample_rate', '1.0')], [('0', 'byte', 1)], [('0', 'byte', 1)], 'Embedded Python Block example - a simple multiply const', ['sample_rate'])</value>
     </param>
     <param>
       <key>_source_code</key>
-      <value>"""
+      <value># -*- coding: utf-8 -*-
+"""
 Embedded Python Blocks:
 
 Each time this file is saved, GRC will instantiate the first class it finds
@@ -823,6 +824,7 @@ be the parameters. All of them are required to have default values!
 
 import numpy as np
 from gnuradio import gr
+import pmt
 
 
 class blk(gr.sync_block):  # other base classes are basic_block, decim_block, interp_block
@@ -843,20 +845,149 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         self.absolute_position = 0
         self.decoded_bits = np.array([0])
 
+        self.chunk_id = 0
+        self.SAMPLERATE = 200000  # in Hz
+        self.short_limit = 775   # maximum length of a short bit in µs
+        self.reset_limit = 2*self.short_limit
+
+        self.currentSymbols = np.empty(0, dtype=np.uint8)
+
+
     def work(self, input_items, output_items):
         """example: multiply with constant"""
+
         
-        edges = np.insert(np.diff(input_items[0]),0,[0])
-        edge_positions = np.nonzero(edges)
+        rawChunk = input_items[0]
 
-        if np.count_nonzero(edges) &gt; 0:
-            edge_positions += np.array(self.absolute_position)
-            print(edge_positions)
+        # skip empty or zero-only chunks    
+        if (rawChunk.size &gt; 0) and (np.sum(rawChunk) &gt; 0) :
 
-        #output_items[0][:] = input_items[0] * self.example_param
-        output_items[0][:] = edges
+          #print("first raw sample",rawChunk[0])
+          #print("last raw sample",rawChunk[-1])
 
-        self.absolute_position = self.absolute_position + len(input_items[0])
+          # force edge at beginning an end of rawChunk
+          rawChunk = np.insert(rawChunk,0,[1 - rawChunk[0]])
+          rawChunk = np.append(rawChunk, [1 - rawChunk[-1]])
+
+          self.chunk_id += 1
+          #print("Chunk", self.chunk_id)
+
+          # calculate edges from raw data; insert one at beginning for sync
+          edges = np.insert(np.diff(rawChunk),0,[0])
+          # position (offset) of edges
+          edge_positions = np.ravel(np.nonzero(edges))
+          #print("edge_positions:", edge_positions)
+
+          #print("edges", edges[np.nonzero(edges)])
+
+          if edge_positions.size &gt; 0:
+            # lengths of pulses and pauses are our symbols, convert to µs
+            symbols = np.diff(edge_positions)*1e6/self.SAMPLERATE
+            # split symbols at packet boundary
+            symbols = np.split(symbols, np.ravel(np.where(symbols&gt;self.reset_limit))+1)
+            #print("Symbols:", symbols)
+
+            # process all parts separately
+            for symbol_chunk in symbols:
+              if symbol_chunk.size &gt; 0:
+                #print("symbol_chunk:", symbol_chunk.size,symbol_chunk)
+
+                # add first symbol to last from previous to reassemble separated pulses/gaps
+                if self.currentSymbols.size &gt; 0: 
+                  self.currentSymbols[-1] += symbol_chunk[0]
+                  symbol_chunk = symbol_chunk[1::] 
+
+                self.currentSymbols = np.append(self.currentSymbols, symbol_chunk)
+
+                print("self.currentSymbols:", self.currentSymbols.size,self.currentSymbols)
+
+                # complete packet is determined by long gap at the end 
+                if self.currentSymbols[-1] &gt; self.reset_limit:
+                  # extract pulses
+                  pulses = self.currentSymbols[0::2]
+
+                  # extract gaps
+                  gaps = self.currentSymbols[1::2]
+
+                  # set short gaps to zero as per decoding rule to remove them later
+                  gaps = np.where(gaps&gt;self.short_limit,gaps,0)
+
+                  # remove packet pause
+                  gaps = np.where(gaps&gt;self.reset_limit,0,gaps)
+
+                  print("Pulses:", pulses.size,pulses)
+                  print("Gaps:", gaps.size, gaps)
+
+                  # interleave pulses and gaps into one array like this [p, g, p, g, p, g]
+                  combined = np.empty(pulses.size + gaps.size, dtype=pulses.dtype)
+                  combined[0::2] = pulses
+                  combined[1::2] = gaps
+
+                  # remove short gaps
+                  combined = combined[np.where(combined&gt;0)]
+                  print("combined:", combined.size,combined)
+
+                  # convert pulse/gap-width to bits as per decoding rule
+                  rawBits = np.where(combined&gt;self.short_limit,0,1)
+                  print("rawBits:", rawBits.size,rawBits)
+
+                  # pack raw bits into bytes
+                  rawPacket = np.packbits(rawBits)
+                  np.set_printoptions(formatter={'int':hex})
+                  print("raw packet:", rawPacket.size, rawPacket)
+                  np.set_printoptions(formatter=None)
+                  
+                  if rawPacket.size &gt;= 10:                  
+                    # prepare final packet
+                    packet = np.empty(0, dtype=np.uint8)
+
+                    # decode all 10 bytes
+                    for i in range(0, 8):
+                      # do some magic
+                      item = np.uint8(rawPacket[i+i/8] &lt;&lt; (i%8))
+                      item |= np.uint8(rawPacket[i+i/8+1] &gt;&gt; (8 - i%8))
+                      # reverse and invert bits; add to packet
+                      packet = np.append(packet, np.uint8(int('{:08b}'.format(item)[::-1],2)^0xff))
+
+                    np.set_printoptions(formatter={'int':hex})
+                    print("packet:", packet.size, packet)
+                    np.set_printoptions(formatter=None)
+
+                    # check for correct header-byte
+                    if packet[0] == 0x9f:
+                      channel = (packet[1] &gt;&gt; 5) &amp; 0x0F
+                      if channel &gt;= 5:
+                        channel -= 1
+                      rc = packet[1] &amp; 0x0F
+                      temp = (packet[5] &amp; 0x0F) * 100 + ((packet[4] &amp; 0xF0) &gt;&gt; 4) * 10 + (packet[4] &amp; 0x0F)
+                      if ((packet[5]&gt;&gt;7) &amp; 0x01) == 0:
+                        temp = -temp
+                      battery_ok = (packet[5]&gt;&gt;6) &amp; 0x01
+                      humidity = ((packet[6] &amp; 0xF0) &gt;&gt; 4) * 10 + (packet[6] &amp; 0x0F)
+
+                      print("Channel:", channel)
+                      print("Rolling Code:", rc)
+                      print("Battery:", battery_ok)
+                      print("Temperature:", temp/10.)
+                      print("Humidity:", humidity)
+                    else:
+                      print("Unknown Header")
+                  else:
+                    print("packet too short")
+                  # done with this packet
+                  self.currentSymbols = np.empty(0, dtype=np.uint8)
+                else:
+                  print("Waiting for more data")
+              else:
+                print("skipping empty chunk")
+          else:
+            print("no edges in chunk")
+        else:
+          #print("Chunk is empty or contains no edges")
+          pass
+
+
+        output_items[0][:] = 0
         return len(output_items[0])
 </value>
     </param>
@@ -866,7 +997,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -882,7 +1013,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>sample_rate</key>
-      <value>int(samp_rate/subsampling)</value>
+      <value>1.0</value>
     </param>
   </block>
   <block>
@@ -922,6 +1053,74 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     <param>
       <key>minoutbuf</key>
       <value>0</value>
+    </param>
+  </block>
+  <block>
+    <key>epy_block</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_io_cache</key>
+      <value>('Edge Detector Block', 'blk', [], [('0', 'byte', 1)], [('0', 'byte', 1)], 'Embedded Python Block example - a simple multiply const', [])</value>
+    </param>
+    <param>
+      <key>_source_code</key>
+      <value># -*- coding: utf-8 -*-
+"""
+Embedded Python Blocks:
+
+Each time this file is saved, GRC will instantiate the first class it finds
+to get ports and parameters of your block. The arguments to __init__  will
+be the parameters. All of them are required to have default values!
+"""
+
+import numpy as np
+from gnuradio import gr
+
+
+class blk(gr.sync_block):  # other base classes are basic_block, decim_block, interp_block
+    """Embedded Python Block example - a simple multiply const"""
+
+    def __init__(self):  # only default arguments here
+        """arguments to this function show up as parameters in GRC"""
+        gr.sync_block.__init__(
+            self,
+            name='Edge Detector Block',   # will show up in GRC
+            in_sig=[np.byte],
+            out_sig=[np.byte]
+        )
+        self.rawBuffer = np.empty(0, dtype=np.uint8)
+
+    def work(self, input_items, output_items):
+        """example: multiply with constant"""
+
+        rawChunk = input_items[0]
+        edges = np.insert(np.diff(rawChunk),0,[0])
+        output_items[0][:] = edges
+        return len(output_items[0])
+</value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(584, 748)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>edge_detector</value>
     </param>
   </block>
   <block>
@@ -1330,7 +1529,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1693,7 +1892,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>0</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -2097,6 +2296,12 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     <sink_key>0</sink_key>
   </connection>
   <connection>
+    <source_block_id>blocks_keep_one_in_n_0</source_block_id>
+    <sink_block_id>edge_detector</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
     <source_block_id>blocks_threshold_ff_0</source_block_id>
     <sink_block_id>blocks_add_const_vxx_0</sink_block_id>
     <source_key>0</source_key>
@@ -2121,14 +2326,14 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>decoder</source_block_id>
-    <sink_block_id>blocks_char_to_float_0_0_1</sink_block_id>
+    <source_block_id>digital_binary_slicer_fb_0</source_block_id>
+    <sink_block_id>blocks_keep_one_in_n_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>digital_binary_slicer_fb_0</source_block_id>
-    <sink_block_id>blocks_keep_one_in_n_0</sink_block_id>
+    <source_block_id>edge_detector</source_block_id>
+    <sink_block_id>blocks_char_to_float_0_0_1</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
