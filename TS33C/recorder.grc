@@ -93,6 +93,33 @@
     </param>
     <param>
       <key>_coordinate</key>
+      <value>(8, 228)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>freq</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>433.964e6</value>
+    </param>
+  </block>
+  <block>
+    <key>variable</key>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
       <value>(8, 160)</value>
     </param>
     <param>
@@ -128,7 +155,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(432, 176)</value>
+      <value>(472, 176)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -179,7 +206,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(432, 252)</value>
+      <value>(472, 252)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -250,7 +277,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(432, 84)</value>
+      <value>(472, 84)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -537,7 +564,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(616, 172)</value>
+      <value>(656, 172)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -892,7 +919,7 @@
     </param>
     <param>
       <key>freq0</key>
-      <value>433.964e6</value>
+      <value>freq</value>
     </param>
     <param>
       <key>gain_mode0</key>
@@ -908,7 +935,7 @@
     </param>
     <param>
       <key>gain0</key>
-      <value>32</value>
+      <value>48</value>
     </param>
     <param>
       <key>ant10</key>

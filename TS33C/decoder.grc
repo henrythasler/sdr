@@ -822,8 +822,9 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         self.state = "idle"
 
         self.chunk_id = 0
-        self.short_limit = 775   # maximum length of a short bit in µs
-        self.reset_limit = 2*self.short_limit
+        self.pulse_short_limit = 775   # default value for maximum length of a short bit in µs (valid for optimal rx quality)
+        self.gap_short_limit = 775   #  default value for maximum length of a short bit in µs (valid for optimal rx quality)
+        self.reset_limit = 2*self.gap_short_limit
 
         self.currentSymbols = np.empty(0, dtype=np.uint8)
         self.rawBuffer = np.empty(0, dtype=np.uint8)
@@ -873,22 +874,23 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
                 if edge_positions.size &gt; 0:
                     # lengths of pulses and pauses are our symbols, convert to µs
                     symbols = np.diff(edge_positions)*1e6/self.sample_rate
+
                     # split symbols at packet boundary
                     symbols = np.array(np.split(symbols, np.ravel(np.where(symbols &gt; self.reset_limit))+1))
                     self.debug(("Symbols:", symbols.size, symbols), TRACE)
-                    self.debug(("symbols.shape",symbols.shape[0]), TRACE)
+                    self.debug(("symbols.shape", symbols.shape[0]), TRACE)
                     self.debug(("state", self.state), TRACE)
-                    if (symbols.shape[0] &gt; 1):
+                    if symbols.shape[0] &gt; 1:
                         self.state = "frame"
 
                     # process all parts separately
                     for symbol_chunk in symbols:
-                        self.debug( ("state", self.state), TRACE)
+                        self.debug(("state", self.state), TRACE)
                         if (symbols.size == 1) or self.state == "idle":
                             # skip leading inter-frame gap
                             symbol_chunk = symbol_chunk[1::]
                         if symbol_chunk.size &gt; 0:
-                            self.debug(("symbol_chunk:", symbol_chunk.size,symbol_chunk), TRACE)
+                            self.debug(("symbol_chunk:", symbol_chunk.size, symbol_chunk), TRACE)
                             self.state = "frame"
 
                             # add first symbol to last from previous to reassemble separated pulses/gaps
@@ -901,24 +903,39 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
                             if self.currentSymbols[0] &gt; self.reset_limit:
                                 self.currentSymbols = self.currentSymbols[1::]
 
-                            self.debug( ("currentSymbols:", self.currentSymbols.size, self.currentSymbols), TRACE)
+                            self.debug(("currentSymbols:", self.currentSymbols.size, self.currentSymbols), TRACE)
 
                             # complete packet is determined by long gap at the end
                             if (self.currentSymbols.size &gt; 1) and (self.currentSymbols[-1] &gt; self.reset_limit):
+
                                 # extract pulses
                                 pulses = self.currentSymbols[0::2]
 
                                 # extract gaps
                                 gaps = self.currentSymbols[1::2]
 
-                                # set short gaps to zero as per decoding rule to remove them later
-                                gaps = np.where(gaps&gt;self.short_limit,gaps,0)
-
                                 # remove packet pause
-                                gaps = np.where(gaps&gt;self.reset_limit,0,gaps)
+                                gaps = np.where(gaps &gt; self.reset_limit, 0, gaps)
 
-                                self.debug( ("Pulses:", pulses.size,pulses), TRACE)
-                                self.debug( ("Gaps:", gaps.size, gaps), TRACE)
+                                # calculate histogram to determine length of short and long pulses
+                                pulse_histogram = np.histogram(pulses, "auto")
+
+                                # calculate histogram to determine length of short and long gaps; leave out packet pause
+                                gap_histogram = np.histogram(gaps[np.where(gaps &gt; 0)], "auto")
+
+                                # derive limits for short pulses/gaps from histogram. Use value in the middle between short and long
+                                self.pulse_short_limit = pulse_histogram[1][pulse_histogram[1].size/2]
+                                self.gap_short_limit = gap_histogram[1][gap_histogram[1].size/2]
+
+                                self.debug(("Pulses:", pulses.size, pulses), TRACE)
+                                self.debug(("Pulse Histogram", pulse_histogram), TRACE)
+                                self.debug(("pulse_short_limit", self.pulse_short_limit), TRACE)
+                                self.debug(("Gaps:", gaps.size, gaps), TRACE)
+                                self.debug(("Gaps Histogram", gap_histogram), TRACE)
+                                self.debug(("gap_short_limit", self.gap_short_limit), TRACE)
+
+                                # set short gaps to zero as per decoding rule to remove them later
+                                #gaps = np.where(gaps &gt; self.gap_short_limit,gaps,0)
 
                                 # interleave pulses and gaps into one array like this [p, g, p, g, p, g]
                                 combined = np.empty(pulses.size + gaps.size, dtype=pulses.dtype)
@@ -926,11 +943,19 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
                                 combined[1::2] = gaps
 
                                 # remove short gaps
-                                combined = combined[np.where(combined &gt; 0)]
-                                self.debug( ("combined:", combined.size,combined), TRACE)
+                                #combined = combined[np.where(combined &gt; 0)]
+                                self.debug(("combined:", combined.size, combined), TRACE)
 
                                 # convert pulse/gap-width to bits as per decoding rule
-                                rawBits = np.where(combined &gt; self.short_limit, 0, 1)
+                                #rawBits = np.where(combined &gt; self.pulse_short_limit, 0, 1)
+
+                                rawBits = np.empty(combined.size, dtype=np.uint8)
+                                self.debug(("rawBits.size", rawBits.size), TRACE)
+                                rawBits[0::2] = np.where(combined[0::2] &lt; self.pulse_short_limit, 1, 0)
+                                rawBits[1::2] = np.where(combined[1::2] &lt; self.gap_short_limit, 255, 0)
+
+                                # remove short gaps
+                                rawBits = rawBits[np.where(rawBits &lt;= 1)]
                                 self.debug(("rawBits:", rawBits.size, rawBits), TRACE)
 
                                 # pack raw bits into bytes
@@ -999,7 +1024,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
 
         output_items[0][:] = self.temperature
         output_items[1][:] = self.humidity
-        return len(output_items)
+        return len(output_items[0])
 </value>
     </param>
     <param>
@@ -1016,7 +1041,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(584, 660)</value>
+      <value>(584, 664)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1528,7 +1553,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>color2</key>
-      <value>("black", "white")</value>
+      <value>("blue", "red")</value>
     </param>
     <param>
       <key>factor2</key>
@@ -2031,11 +2056,11 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     </param>
     <param>
       <key>ymax</key>
-      <value>1</value>
+      <value>1.2</value>
     </param>
     <param>
       <key>ymin</key>
-      <value>-1</value>
+      <value>-.1</value>
     </param>
   </block>
   <block>

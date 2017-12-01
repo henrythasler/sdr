@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     rawData = np.ravel(np.fromfile(FILENAME, dtype=np.int8))
 
-    rawStream = np.array_split(rawData, 1000)
+    rawStream = np.array_split(rawData, 10)
 
     for chunk in rawStream:
         decoder.work([chunk])
