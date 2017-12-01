@@ -24,6 +24,29 @@ Gap | *(skip)* | `0` | *Reset*
 * reverse
 * XOR 0xFF
 
+## Example
+```
+        06       bd       e3       d0       a9       75       e1       8e       40       19       3b       c0
+        00000110 10111101 11100011 11010000 10101001 01110101 11100001 10001110 01000000 00011001 00111011 11000000
+        
+        
+        00000110 1 01111011 1 10001111 0 10000101 0 10010111 0 10111100 0 01100011 1 00100000 0 00011001 0 01110111 1 000000
+        Byte0    | Byte1    | Byte2    | Byte3    | Byte4    | Byte5    | Byte6    | Byte7    | Byte8    | Byte9    | (ignore)
+                 parity     parity     parity     parity     parity     parity     parity     parity     parity     parity
+                 
+reverse 01100000   11011110   11110001   10100001   11101001   00111101   11000110   00000100   10011000   11101110
+XOR ff  10011111   00100001   00001110   01011110   00010110   11000010   00111001   11111011   01100111   00010001
+        9f         21         0e         5e         16         c2         39         fb         67         11
+
+        
+        10011111   00100001   00001110   01011110   00010110   11000010   00111001   11111011   01100111   00010001
+Humidity
+     bin                                                                  0011
+     dec                                                                     3   
+     bin                                                                      1001  
+     dec                                                                         9
+     phy                                                                        39%
+```
 # stream decoding
 GNU radio block process the raw data in chunks. So the decoder must be able to handle
 these as well. The following situation can occur:
