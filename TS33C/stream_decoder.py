@@ -9,16 +9,17 @@ ERROR = 1
 INFO = 2
 TRACE = 3
 
-class stream_decoder:
-    """Embedded Python Block example - a simple multiply const"""
+class StreamDecoder(object):
+    """TS33C Decoder Class"""
     def __init__(self, sample_rate=20000, debug_level=0):
         self.debug_level = debug_level
         self.sample_rate = sample_rate
         self.state = "idle"
 
         self.chunk_id = 0
-        self.short_limit = 775   # maximum length of a short bit in µs
-        self.reset_limit = 2*self.short_limit
+        self.pulse_short_limit = 775   # default value for maximum length of a short bit in µs (valid for optimal rx quality)
+        self.gap_short_limit = 775   #  default value for maximum length of a short bit in µs (valid for optimal rx quality)
+        self.reset_limit = 2*self.gap_short_limit
 
         self.currentSymbols = np.empty(0, dtype=np.uint8)
         self.rawBuffer = np.empty(0, dtype=np.uint8)
@@ -28,10 +29,12 @@ class stream_decoder:
         self.humidity = 0
 
     def debug(self, message, level=0):
+        """Debug output depending on debug level."""
         if self.debug_level >= level:
             print message
 
     def work(self, input_items):
+        """The actual Decoder."""
         rawChunk = input_items[0]
         self.rawBuffer = np.append(self.rawBuffer, rawChunk)
 
@@ -64,23 +67,23 @@ class stream_decoder:
                 if edge_positions.size > 0:
                     # lengths of pulses and pauses are our symbols, convert to µs
                     symbols = np.diff(edge_positions)*1e6/self.sample_rate
-                    
+
                     # split symbols at packet boundary
                     symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.reset_limit))+1))
                     self.debug(("Symbols:", symbols.size, symbols), TRACE)
-                    self.debug(("symbols.shape",symbols.shape[0]), TRACE)
+                    self.debug(("symbols.shape", symbols.shape[0]), TRACE)
                     self.debug(("state", self.state), TRACE)
-                    if (symbols.shape[0] > 1):
+                    if symbols.shape[0] > 1:
                         self.state = "frame"
 
                     # process all parts separately
                     for symbol_chunk in symbols:
-                        self.debug( ("state", self.state), TRACE)
+                        self.debug(("state", self.state), TRACE)
                         if (symbols.size == 1) or self.state == "idle":
                             # skip leading inter-frame gap
                             symbol_chunk = symbol_chunk[1::]
                         if symbol_chunk.size > 0:
-                            self.debug(("symbol_chunk:", symbol_chunk.size,symbol_chunk), TRACE)
+                            self.debug(("symbol_chunk:", symbol_chunk.size, symbol_chunk), TRACE)
                             self.state = "frame"
 
                             # add first symbol to last from previous to reassemble separated pulses/gaps
@@ -93,27 +96,39 @@ class stream_decoder:
                             if self.currentSymbols[0] > self.reset_limit:
                                 self.currentSymbols = self.currentSymbols[1::]
 
-                            self.debug( ("currentSymbols:", self.currentSymbols.size, self.currentSymbols), TRACE)
+                            self.debug(("currentSymbols:", self.currentSymbols.size, self.currentSymbols), TRACE)
 
                             # complete packet is determined by long gap at the end
                             if (self.currentSymbols.size > 1) and (self.currentSymbols[-1] > self.reset_limit):
-                                  
+
                                 # extract pulses
                                 pulses = self.currentSymbols[0::2]
 
                                 # extract gaps
                                 gaps = self.currentSymbols[1::2]
 
-                                # set short gaps to zero as per decoding rule to remove them later
-                                gaps = np.where(gaps>self.short_limit,gaps,0)
-
                                 # remove packet pause
-                                gaps = np.where(gaps>self.reset_limit,0,gaps)
+                                gaps = np.where(gaps > self.reset_limit, 0, gaps)
 
-                                self.debug( ("Pulses:", pulses.size,pulses), TRACE)
-                                self.debug(("Pulse Histogram", np.histogram(pulses, "auto")), TRACE)
-                                self.debug( ("Gaps:", gaps.size, gaps), TRACE)
-                                self.debug(("Gaps Histogram", np.histogram(gaps, "auto")), TRACE)
+                                # calculate histogram to determine length of short and long pulses
+                                pulse_histogram = np.histogram(pulses, "auto")
+
+                                # calculate histogram to determine length of short and long gaps; leave out packet pause
+                                gap_histogram = np.histogram(gaps[np.where(gaps > 0)], "auto")
+
+                                # derive limits for short pulses/gaps from histogram. Use value in the middle between short and long
+                                self.pulse_short_limit = pulse_histogram[1][pulse_histogram[1].size/2]
+                                self.gap_short_limit = gap_histogram[1][gap_histogram[1].size/2]
+
+                                self.debug(("Pulses:", pulses.size, pulses), TRACE)
+                                self.debug(("Pulse Histogram", pulse_histogram), TRACE)
+                                self.debug(("pulse_short_limit", self.pulse_short_limit), TRACE)
+                                self.debug(("Gaps:", gaps.size, gaps), TRACE)
+                                self.debug(("Gaps Histogram", gap_histogram), TRACE)
+                                self.debug(("gap_short_limit", self.gap_short_limit), TRACE)
+
+                                # set short gaps to zero as per decoding rule to remove them later
+                                #gaps = np.where(gaps > self.gap_short_limit,gaps,0)
 
                                 # interleave pulses and gaps into one array like this [p, g, p, g, p, g]
                                 combined = np.empty(pulses.size + gaps.size, dtype=pulses.dtype)
@@ -121,11 +136,19 @@ class stream_decoder:
                                 combined[1::2] = gaps
 
                                 # remove short gaps
-                                combined = combined[np.where(combined > 0)]
-                                self.debug( ("combined:", combined.size,combined), TRACE)
+                                #combined = combined[np.where(combined > 0)]
+                                self.debug(("combined:", combined.size, combined), TRACE)
 
                                 # convert pulse/gap-width to bits as per decoding rule
-                                rawBits = np.where(combined > self.short_limit, 0, 1)
+                                #rawBits = np.where(combined > self.pulse_short_limit, 0, 1)
+
+                                rawBits = np.empty(combined.size, dtype=np.uint8)
+                                self.debug(("rawBits.size", rawBits.size), TRACE)
+                                rawBits[0::2] = np.where(combined[0::2] < self.pulse_short_limit, 1, 0)
+                                rawBits[1::2] = np.where(combined[1::2] < self.gap_short_limit, 255, 0)
+
+                                # remove short gaps
+                                rawBits = rawBits[np.where(rawBits <= 1)]
                                 self.debug(("rawBits:", rawBits.size, rawBits), TRACE)
 
                                 # pack raw bits into bytes
@@ -193,11 +216,11 @@ class stream_decoder:
             self.debug("filling rawBuffer", INFO)
 
 if __name__ == "__main__":
-    decoder = stream_decoder(debug_level=TRACE)
+    decoder = StreamDecoder(debug_level=TRACE)
 
     rawData = np.ravel(np.fromfile(FILENAME, dtype=np.int8))
 
-    rawStream = np.array_split(rawData, 10)
+    rawStream = np.array_split(rawData, 1000)
 
-    for rawChunk in rawStream:
-        decoder.work([rawChunk])
+    for chunk in rawStream:
+        decoder.work([chunk])
