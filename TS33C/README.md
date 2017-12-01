@@ -11,13 +11,13 @@ Frequency  | 433.964MHz |
 Pulse and gap lengths are decoded as follows:
 
 | dt <= 775µs | dt > 775µs | dt > 1550µs
---- | --- |
+--- | --- | ---
 Symbol | `Short` | `Long` | `Reset`
 
 Symbols are decoded as follows:
 
 |Short | Long | Reset
---- | --- |
+--- | --- | ---
 Pulse | `1` | `0` | *Error*
 Gap | *(skip)* | `0` | *Reset*
 
