@@ -152,33 +152,39 @@ class StreamDecoder(object):
                                 self.debug(("rawBits:", rawBits.size, rawBits), TRACE)
 
                                 # pack raw bits into bytes
-                                rawPacket = np.packbits(rawBits)
+                                #rawPacket = np.packbits(rawBits)
+                                #np.set_printoptions(formatter={'int':hex})
+                                #self.debug(("raw packet:", rawPacket.size, rawPacket), TRACE)
+                                #np.set_printoptions(formatter=None)
+
+                                # prepare boolean mask for parity bits (every 9th bit)
+                                parityMask = np.mod(np.arange(rawBits.size)+1, 9) == 0
+
+                                # extract parity bits as boolean array
+                                parityBits = np.extract(parityMask, rawBits) == 1
+                                # extract packet bits
+                                packetBits = np.extract(np.invert(parityMask), rawBits) == 1
+
+                                # swap MSB and LSB, invert Bits, pack 8 bits into one byte, reverse order to compensate for 1st flip
+                                packet = np.packbits(np.invert(packetBits[::-1]))[::-1]
+
+                                # calculate parity of each byte by splitting the bits into reversed and inverted 8-bit parts and 
+                                # calculate the sum of set bits; 
+                                packetParity = (np.sum(np.split(np.invert(packetBits[::-1]), packetBits.size/8), axis=1)[::-1] % 2) == 0
+
                                 np.set_printoptions(formatter={'int':hex})
-                                self.debug(("raw packet:", rawPacket.size, rawPacket), TRACE)
+                                self.debug(("packet:", packet.size, packet), INFO)
+                                self.debug(("packetParity:", packetParity.size, packetParity), TRACE)
                                 np.set_printoptions(formatter=None)
 
-                                if rawPacket.size >= 10:
-                                    # prepare final packet
-                                    packet = np.empty(0, dtype=np.uint8)
-
-                                    # decode all 10 bytes
-                                    for i in range(0, 8):
-                                        # do some magic
-                                        item = np.uint8(rawPacket[i+i/8] << (i%8))
-                                        item |= np.uint8(rawPacket[i+i/8+1] >> (8 - i%8))
-                                        # reverse and invert bits; add to packet
-                                        packet = np.append(packet, np.uint8(int('{:08b}'.format(item)[::-1], 2)^0xff))
-
-                                    np.set_printoptions(formatter={'int':hex})
-                                    self.debug(("packet:", packet.size, packet), INFO)
-                                    np.set_printoptions(formatter=None)
-
-                                    # check for correct header-byte
-                                    if packet[0] == 0x9f:
+                                # check parity of packet
+                                if np.array_equal(packetParity, parityBits):
+                                    # check for correct sensor type and header-byte
+                                    if (packet.size == 10) and (packet[0] == 0x9f):
                                         channel = (packet[1] >> 5) & 0x0F
                                         if channel >= 5:
                                             channel -= 1
-                                        rc = packet[1] & 0x0F
+                                        rollingCode = packet[1] & 0x0F
                                         temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F)
                                         if ((packet[5]>>7) & 0x01) == 0:
                                             temp = -temp
@@ -186,18 +192,18 @@ class StreamDecoder(object):
                                         battery_ok = (packet[5]>>6) & 0x01
                                         self.humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F)
 
-                                        print("Channel:", channel)
-                                        print("Rolling Code:", rc)
-                                        print("Battery:", battery_ok)
+                                        self.debug(("Channel:", channel), INFO)
+                                        self.debug(("Rolling Code:", rollingCode), INFO)
+                                        self.debug(("Battery:", battery_ok), INFO)
                                         print("Temperature:", self.temperature)
                                         print("Humidity:", self.humidity)
                                     else:
-                                        self.debug("Unknown Header", INFO)
+                                        self.debug("Unknown Sensor or Header", INFO)
                                 else:
-                                    self.debug("packet too short", INFO)
+                                    self.debug("Parity check failed", INFO)
+
                                 # done with this packet
                                 self.currentSymbols = np.empty(0, dtype=np.uint8)
-                                #state = "idle"
                             else:
                                 self.debug("Waiting for more data", INFO)
                         else:
