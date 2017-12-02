@@ -127,21 +127,14 @@ class StreamDecoder(object):
                                 self.debug(("Gaps Histogram", gap_histogram), TRACE)
                                 self.debug(("gap_short_limit", self.gap_short_limit), TRACE)
 
-                                # set short gaps to zero as per decoding rule to remove them later
-                                #gaps = np.where(gaps > self.gap_short_limit,gaps,0)
-
                                 # interleave pulses and gaps into one array like this [p, g, p, g, p, g]
                                 combined = np.empty(pulses.size + gaps.size, dtype=pulses.dtype)
                                 combined[0::2] = pulses
                                 combined[1::2] = gaps
 
-                                # remove short gaps
-                                #combined = combined[np.where(combined > 0)]
                                 self.debug(("combined:", combined.size, combined), TRACE)
 
                                 # convert pulse/gap-width to bits as per decoding rule
-                                #rawBits = np.where(combined > self.pulse_short_limit, 0, 1)
-
                                 rawBits = np.empty(combined.size, dtype=np.uint8)
                                 self.debug(("rawBits.size", rawBits.size), TRACE)
                                 rawBits[0::2] = np.where(combined[0::2] < self.pulse_short_limit, 1, 0)
@@ -151,12 +144,6 @@ class StreamDecoder(object):
                                 rawBits = rawBits[np.where(rawBits <= 1)]
                                 self.debug(("rawBits:", rawBits.size, rawBits), TRACE)
 
-                                # pack raw bits into bytes
-                                #rawPacket = np.packbits(rawBits)
-                                #np.set_printoptions(formatter={'int':hex})
-                                #self.debug(("raw packet:", rawPacket.size, rawPacket), TRACE)
-                                #np.set_printoptions(formatter=None)
-
                                 # prepare boolean mask for parity bits (every 9th bit)
                                 parityMask = np.mod(np.arange(rawBits.size)+1, 9) == 0
 
@@ -165,47 +152,49 @@ class StreamDecoder(object):
                                 # extract packet bits
                                 packetBits = np.extract(np.invert(parityMask), rawBits) == 1
 
-                                # swap MSB and LSB, invert Bits, pack 8 bits into one byte, reverse order to compensate for 1st flip
-                                packet = np.packbits(np.invert(packetBits[::-1]))[::-1]
+                                if (packetBits.size % 8) == 0:
+                                    # swap MSB and LSB, invert Bits, pack 8 bits into one byte, reverse order to compensate for 1st flip
+                                    packet = np.packbits(np.invert(packetBits[::-1]))[::-1]
 
-                                # calculate parity of each byte by splitting the bits into reversed and inverted 8-bit parts and 
-                                # calculate the sum of set bits; 
-                                packetParity = (np.sum(np.split(np.invert(packetBits[::-1]), packetBits.size/8), axis=1)[::-1] % 2) == 0
+                                    np.set_printoptions(formatter={'int':hex})
+                                    self.debug(("packet:", packet.size, packet), INFO)
+                                    # calculate parity of each byte by splitting the bits into reversed and inverted 8-bit parts and 
+                                    # calculate the sum of set bits; 
+                                    packetParity = (np.sum(np.split(np.invert(packetBits[::-1]), np.arange(8, packetBits.size, 8)), axis=1)[::-1] % 2) == 0
 
-                                np.set_printoptions(formatter={'int':hex})
-                                self.debug(("packet:", packet.size, packet), INFO)
-                                self.debug(("packetParity:", packetParity.size, packetParity), TRACE)
-                                np.set_printoptions(formatter=None)
+                                    self.debug(("packetParity:", packetParity.size, packetParity), TRACE)
+                                    np.set_printoptions(formatter=None)
 
-                                # check parity of packet
-                                if np.array_equal(packetParity, parityBits):
-                                    # check for correct sensor type and header-byte
-                                    if (packet.size == 10) and (packet[0] == 0x9f):
-                                        channel = (packet[1] >> 5) & 0x0F
-                                        if channel >= 5:
-                                            channel -= 1
-                                        rollingCode = packet[1] & 0x0F
-                                        temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F)
-                                        if ((packet[5]>>7) & 0x01) == 0:
-                                            temp = -temp
-                                        self.temperature = temp/10.
-                                        battery_ok = (packet[5]>>6) & 0x01
-                                        self.humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F)
+                                    # check parity of packet
+                                    if np.array_equal(packetParity, parityBits):
+                                        # check for correct sensor type and header-byte
+                                        if (packet.size == 10) and (packet[0] == 0x9f):
+                                            channel = (packet[1] >> 5) & 0x0F
+                                            if channel >= 5:
+                                                channel -= 1
+                                            rollingCode = packet[1] & 0x0F
+                                            temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F)
+                                            if ((packet[5]>>7) & 0x01) == 0:
+                                                temp = -temp
+                                            self.temperature = temp/10.
+                                            battery_ok = (packet[5]>>6) & 0x01
+                                            self.humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F)
 
-                                        self.debug(("Channel:", channel), INFO)
-                                        self.debug(("Rolling Code:", rollingCode), INFO)
-                                        self.debug(("Battery:", battery_ok), INFO)
-                                        print("Temperature:", self.temperature)
-                                        print("Humidity:", self.humidity)
+                                            self.debug(("Channel:", channel), INFO)
+                                            self.debug(("Rolling Code:", rollingCode), INFO)
+                                            self.debug(("Battery:", battery_ok), INFO)
+                                            print("Temperature:", self.temperature)
+                                            print("Humidity:", self.humidity)
+                                        else:
+                                            self.debug("Unknown Sensor or Header", ERROR)
                                     else:
-                                        self.debug("Unknown Sensor or Header", INFO)
+                                        self.debug("Parity check failed", ERROR)
                                 else:
-                                    self.debug("Parity check failed", INFO)
-
+                                    self.debug("Invalid packet length", ERROR)
                                 # done with this packet
                                 self.currentSymbols = np.empty(0, dtype=np.uint8)
                             else:
-                                self.debug("Waiting for more data", INFO)
+                                self.debug("Waiting for more data", TRACE)
                         else:
                             self.debug("skipping empty chunk", INFO)
                             self.state = "idle"
@@ -219,7 +208,7 @@ class StreamDecoder(object):
             self.rawBuffer = np.empty(0, dtype=np.uint8)
         else:
             # wait for more samples
-            self.debug("filling rawBuffer", INFO)
+            self.debug("filling rawBuffer", TRACE)
 
 if __name__ == "__main__":
     decoder = StreamDecoder(debug_level=TRACE)
