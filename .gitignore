@@ -5,3 +5,5 @@ top_block.py
 *.dat
 
 blocks/gr-bitmap/build/
+
+TS33C/\.vscode/
