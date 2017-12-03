@@ -38,7 +38,7 @@ class StreamDecoder(object):
         rawChunk = input_items[0]
         self.rawBuffer = np.append(self.rawBuffer, rawChunk)
 
-        # we need at least as many samples as is defined by reset_limi
+        # we need at least as many samples as is defined by reset_limit
         if self.rawBuffer.size*1e6/self.sample_rate > self.reset_limit:
 
             # skip empty or zero-only chunks
@@ -73,6 +73,9 @@ class StreamDecoder(object):
                     self.debug(("Symbols:", symbols.size, symbols), TRACE)
                     self.debug(("symbols.shape", symbols.shape[0]), TRACE)
                     self.debug(("state", self.state), TRACE)
+
+                    # if symbols are split into 2+ arrays at packet boundary we
+                    # have a valid frame
                     if symbols.shape[0] > 1:
                         self.state = "frame"
 
@@ -140,7 +143,7 @@ class StreamDecoder(object):
                                 rawBits[0::2] = np.where(combined[0::2] < self.pulse_short_limit, 1, 0)
                                 rawBits[1::2] = np.where(combined[1::2] < self.gap_short_limit, 255, 0)
 
-                                # remove short gaps
+                                # remove short gaps marked as 255 above
                                 rawBits = rawBits[np.where(rawBits <= 1)]
                                 self.debug(("rawBits:", rawBits.size, rawBits), TRACE)
 
@@ -149,17 +152,18 @@ class StreamDecoder(object):
 
                                 # extract parity bits as boolean array
                                 parityBits = np.extract(parityMask, rawBits) == 1
-                                # extract packet bits
+                                # extract packet bits as boolean array
                                 packetBits = np.extract(np.invert(parityMask), rawBits) == 1
 
+                                # make sure we have whole bytes (8 bit)
                                 if (packetBits.size % 8) == 0:
                                     # swap MSB and LSB, invert Bits, pack 8 bits into one byte, reverse order to compensate for 1st flip
                                     packet = np.packbits(np.invert(packetBits[::-1]))[::-1]
 
                                     np.set_printoptions(formatter={'int':hex})
                                     self.debug(("packet:", packet.size, packet), INFO)
-                                    # calculate parity of each byte by splitting the bits into reversed and inverted 8-bit parts and 
-                                    # calculate the sum of set bits; 
+                                    # calculate parity of each byte by splitting the bits into reversed and inverted 8-bit parts and
+                                    # calculate the sum of set bits;
                                     packetParity = (np.sum(np.split(np.invert(packetBits[::-1]), np.arange(8, packetBits.size, 8)), axis=1)[::-1] % 2) == 0
 
                                     self.debug(("packetParity:", packetParity.size, packetParity), TRACE)
@@ -169,22 +173,22 @@ class StreamDecoder(object):
                                     if np.array_equal(packetParity, parityBits):
                                         # check for correct sensor type and header-byte
                                         if (packet.size == 10) and (packet[0] == 0x9f):
+                                            #extract values from packet
                                             channel = (packet[1] >> 5) & 0x0F
                                             if channel >= 5:
                                                 channel -= 1
                                             rollingCode = packet[1] & 0x0F
                                             temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F)
-                                            if ((packet[5]>>7) & 0x01) == 0:
-                                                temp = -temp
-                                            self.temperature = temp/10.
-                                            battery_ok = (packet[5]>>6) & 0x01
+                                            sign = (((packet[5]>>7) & 0x01) * 2) - 1
+                                            self.temperature = temp*sign/10.
+                                            battery_ok = (packet[5]>>6) & 0x01 == 1
                                             self.humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F)
 
                                             self.debug(("Channel:", channel), INFO)
                                             self.debug(("Rolling Code:", rollingCode), INFO)
-                                            self.debug(("Battery:", battery_ok), INFO)
-                                            print("Temperature:", self.temperature)
-                                            print("Humidity:", self.humidity)
+                                            self.debug(("Battery ok:", battery_ok), INFO)
+                                            print("Temperature: %02.1f°C" % self.temperature)
+                                            print("Humidity: %02i%%" % self.humidity)
                                         else:
                                             self.debug("Unknown Sensor or Header", ERROR)
                                     else:
@@ -211,11 +215,15 @@ class StreamDecoder(object):
             self.debug("filling rawBuffer", TRACE)
 
 if __name__ == "__main__":
+    # set up decoder
     decoder = StreamDecoder(debug_level=TRACE)
 
+    # load raw binary data from file
     rawData = np.ravel(np.fromfile(FILENAME, dtype=np.int8))
 
-    rawStream = np.array_split(rawData, 10)
+    # simulate streaming of input data
+    rawStream = np.array_split(rawData, 100)
 
     for chunk in rawStream:
+        # feed chunks to decoder
         decoder.work([chunk])
