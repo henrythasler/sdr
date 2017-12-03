@@ -8,10 +8,13 @@ I use a RTL2832U-based USB-receiver [RTL_SDR by Radioddity](https://www.radioddi
 See https://www.rtl-sdr.com/ for more info.
 
 # Software
-## CubicSDR
-http://cubicsdr.com/
+* [CubicSDR](http://cubicsdr.com/)
+* [baudline](http://baudline.com/index.html)
 
 ## Gnu Radio
+
+# Know-How
+* [I/Q Data for Dummies](http://whiteboard.ping.se/SDR/IQ)
 
 # Projects
 * FM-Radio
