@@ -31,6 +31,13 @@ Gap | *(skip)* | `0` | *Reset*
 
 Please note that the stream-decoder adapts the values for short/long symbols for each packet by creating and evaluating a histogram of all pulse and gap lengths.
 
+After decoding all symbols to bits, the resulting bitstream contains 90 bits and must be further processed as follows:
+1. Extract parity bits and data bytes
+2. Reverse data bytes (swap MSB and LSB)
+3. Invert each bit of the data bytes  (xor 0xff)
+4. Check parity bits and frame length
+5. Extract sensor signals
+
 ## Example
 ##### Decoding of raw radio signal to bits:
 ![Decoding of raw radio signal to bits](docs/Decoding%20Description%201.png)
