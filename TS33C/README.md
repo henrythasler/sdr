@@ -33,9 +33,9 @@ Please note that the stream-decoder adapts the values for short/long symbols for
 
 ## Example
 ##### Decoding of raw radio signal to bits:
-![Decoding of raw radio signal to bits](./docs/Decoding Description 1.png)
+![Decoding of raw radio signal to bits](docs/Decoding%20Description%201.png)
 ##### Decoding of bits to sensor information:
-![Decoding of bits to sensor information](./docs/Decoding Description 2.png)
+![Decoding of bits to sensor information](docs/Decoding%20Description%202.png)
 # Stream decoding
 GNU radio block process the raw data in chunks. So the decoder must be able to handle
 these as well.
