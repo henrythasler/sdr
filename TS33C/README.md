@@ -3,61 +3,42 @@ Analysis and decoding of temperatures and humidity values sent by this wireless 
 
 # Technical Specifications
 
-Item | Value | Description
--------------: | ------------- | :-------------
-Frequency  | 433.964MHz |
+Item       | Value        | Description
+-----------|------------- | -------------
+Frequency  | 433.964 MHz |
+Wavelength | 69 cm | λ=c/f
+Modulation | On-off keying (OOK) |
 
 # Decoding Rules
-Pulse and gap lengths are decoded as follows:
+Pulse lengths Tp are decoded as follows:
 
-| dt <= 775µs | dt > 775µs | dt > 1550µs
+ | Tp <= 390µs | Tp > 390µs
+--- | --- | ---
+Symbol | `Short` | `Long`
+
+Gaps lengths Tg are decoded as follows:
+
+ | Tg <= 1140µs | Tg > 1140µs | Tg > 1550µs
 --- | --- | ---
 Symbol | `Short` | `Long` | `Reset`
 
-Symbols are decoded as follows:
+The resulting symbols are decoded as follows:
 
-|Short | Long | Reset
+ | `Short` | `Long` | `Reset`
 --- | --- | ---
 Pulse | `1` | `0` | *Error*
 Gap | *(skip)* | `0` | *Reset*
 
-* reverse
-* XOR 0xFF
+Please note that the stream-decoder adapts the values for short/long symbols for each packet by creating and evaluating a histogram of all pulse and gap lengths.
 
 ## Example
-```
-raw     000001101011110111100011110100001001101111101111111001001101011001100001001101110000111101
-
-        00000110 1 01111011 1 10001111 0 10000100 1 10111110 1 11111100 1 00110101 1 00110000 1 00110111 0 00011110 1
-        Byte 0   | Byte 1   | Byte 2   | Byte 3   | Byte 4   | Byte 5   | Byte 6   | Byte 7   | Byte 8   | Byte 9   | 
-                 |          |          |          |          |          |          |          |          |          |
-                 parity     parity     parity     parity     parity     parity     parity     parity     parity     parity
-
-reverse 01100000   11011110   11110001   00100001   01111101   00111111   10101100   00001100   11101100   01111000
-invert  10011111   00100001   00001110   11011110   10000010   11000000   01010011   11110011   00010011   10000111
-parity         1          1          0          1          1          1          1          1          0          1
-hex           9f         21         0e         de         82         c0         53         f3         13         87       
-       
-Humidity
-*10                                                                       0101
-*1                                                                            0011  
-     phy                                                                   50 + 3 = 53%
-
-Temperature
-*10                                                                0000
-*1                                                  1000  
-*.1                                                     0010  
-sign                                                           1      
-                                                       8  .2   +      0
-     phy                                               8+ .2         +0 = +8.2°C
-```
-# stream decoding
+##### Decoding of raw radio signal to bits:
+![Decoding of raw radio signal to bits](./docs/Decoding Description 1.png)
+##### Decoding of bits to sensor information:
+![Decoding of bits to sensor information](./docs/Decoding Description 2.png)
+# Stream decoding
 GNU radio block process the raw data in chunks. So the decoder must be able to handle
-these as well. The following situation can occur:
-
-Current State | idle | packet
---- | --- | ---
-New State | x |
+these as well.
 
 # Decoding Tool
 Use the [rtl_433-tool](https://github.com/merbanan/rtl_433) to decode the values for reference or analyze the radio data.
