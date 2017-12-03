@@ -12,20 +12,20 @@ Modulation | On-off keying (OOK) |
 # Decoding Rules
 Pulse lengths Tp are decoded as follows:
 
- | Tp <= 390µs | Tp > 390µs
+Timing | Tp <= 390µs | Tp > 390µs
 --- | --- | ---
 Symbol | `Short` | `Long`
 
 Gaps lengths Tg are decoded as follows:
 
- | Tg <= 1140µs | Tg > 1140µs | Tg > 1550µs
---- | --- | ---
+Timing | Tg <= 1140µs | Tg > 1140µs | Tg > 1550µs
+--- | --- | --- | ---
 Symbol | `Short` | `Long` | `Reset`
 
 The resulting symbols are decoded as follows:
 
- | `Short` | `Long` | `Reset`
---- | --- | ---
+Symbol | `Short` | `Long` | `Reset`
+--- | --- | --- | ---
 Pulse | `1` | `0` | *Error*
 Gap | *(skip)* | `0` | *Reset*
 
