@@ -1,17 +1,19 @@
-# Telis 1 RTS remote control
-Remote control for various home appliances.
+# berner remote control
+
 
 # Technical Specifications
 Item | Value | Description
 -------------: | ------------- | :-------------
-Frequency  | 433.42MHz |
-Bit-timing | 60ms |
-bitrate | 16.67 baud |
+Model | BHS140
+Radio | fixed code, unidirectional
+Channels | 4 |
+Frequency  | 868.2MHz |
+Bit-timing | ? |
+bitrate | ? |
 Coding | ? |
 
 # Decoding Tool
 
 
-
 # References
-* https://www.somfy.de/produkte/1810630/telis-1-rts-
+* http://berner-torantriebe.eu/files/berner_handsender_090516.pdf

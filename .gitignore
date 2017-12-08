@@ -7,3 +7,5 @@ top_block.py
 blocks/gr-bitmap/build/
 
 TS33C/\.vscode/
+
+*.raw
