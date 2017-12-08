@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""Live decoder for Hideki TS33C Wireless Temperature/Humidity Sensor"""
 
 import numpy as np
 
@@ -11,6 +12,8 @@ TRACE = 3
 
 class StreamDecoder(object):
     """TS33C Decoder Class"""
+    # pylint: disable=too-many-instance-attributes, C0301, C0103
+
     def __init__(self, sample_rate=20000, debug_level=0):
         self.debug_level = debug_level
         self.sample_rate = sample_rate
@@ -35,6 +38,8 @@ class StreamDecoder(object):
 
     def work(self, input_items):
         """The actual Decoder."""
+        # pylint: disable=too-many-nested-blocks, too-many-statements, R0914, R0912, C0301
+
         rawChunk = input_items[0]
         self.rawBuffer = np.append(self.rawBuffer, rawChunk)
 
@@ -187,8 +192,8 @@ class StreamDecoder(object):
                                             self.debug(("Channel:", channel), INFO)
                                             self.debug(("Rolling Code:", rollingCode), INFO)
                                             self.debug(("Battery ok:", battery_ok), INFO)
-                                            print("Temperature: %02.1f°C" % self.temperature)
-                                            print("Humidity: %02i%%" % self.humidity)
+                                            print "Temperature: %02.1f°C" % self.temperature
+                                            print "Humidity: %02i%%" % self.humidity
                                         else:
                                             self.debug("Unknown Sensor or Header", ERROR)
                                     else:
@@ -214,16 +219,20 @@ class StreamDecoder(object):
             # wait for more samples
             self.debug("filling rawBuffer", TRACE)
 
-if __name__ == "__main__":
+def main():
+    """ main function """
     # set up decoder
     decoder = StreamDecoder(debug_level=TRACE)
 
     # load raw binary data from file
-    rawData = np.ravel(np.fromfile(FILENAME, dtype=np.int8))
+    raw_data = np.ravel(np.fromfile(FILENAME, dtype=np.int8))
 
     # simulate streaming of input data
-    rawStream = np.array_split(rawData, 100)
+    raw_stream = np.array_split(raw_data, 100)
 
-    for chunk in rawStream:
+    for chunk in raw_stream:
         # feed chunks to decoder
         decoder.work([chunk])
+
+if __name__ == "__main__":
+    main()
