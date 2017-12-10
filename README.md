@@ -1,9 +1,10 @@
 # Intro
-collection of software defined radio (SDR) stuff
+Collection of software defined radio (SDR) stuff
 
 # Projects
 * [FM-Radio](./FM-Radio)
 * [Live Decoding of Hideki TS33C Wireless Temperature Sensor](./TS33C)
+* [Live Decoding of TFA 30.3180.IT Wireless Temperature Sensor](./TFA)
 
 # Hardware
 I use a RTL2832U-based USB-receiver [RTL_SDR by Radioddity](https://www.radioddity.com/radioddity-100khz-1766mhz-0-1mhz-1-7ghz-full-band-uhf-vhf-hf-rtl-sdr-usb-tuner-receiver.html). It is shipped with a monopole antenna which works o.k. for most beginner use-cases (e.g. FM-Radio, 433MHz)
