@@ -41,6 +41,21 @@ class StreamDecoder(object):
         if self.debug_level >= level:
             print message
 
+    @classmethod
+    def crc8(cls, data):
+        """Simple CRC-8 calculator"""
+        generator = 0x31    # x^8 + x^5 + x^4 + 1
+        crc = np.uint8(0)   # use uint8
+
+        for currByte in data:
+            crc ^= currByte
+            for i in range(8):
+                if (crc & 0x80) != 0:
+                    crc = np.uint8((crc << 1) ^ generator)
+                else:
+                    crc <<= 1
+        return crc
+
     def work(self, input_items):
         """The actual Decoder."""
         # pylint: disable=too-many-nested-blocks, too-many-statements, R0914, R0912, C0301
@@ -124,7 +139,7 @@ class StreamDecoder(object):
                                 self.debug(("symbol_length:", symbol_length), TRACE)
                                 self.debug(("baudrate:", baudrate), TRACE)
 
-                                # determine start of data packet 
+                                # determine start of data packet
                                 data_start = np.where(self.currentSymbols > symbol_length*1.5)[0][0]
                                 self.debug(("data_start:", data_start), TRACE)
 
@@ -158,27 +173,31 @@ class StreamDecoder(object):
 
                                 self.debug(("rawBits:", rawBits.size, rawBits), TRACE)
 
-                                # make sure we have at least 11 bytes 
+                                # make sure we have at least 11 bytes
                                 if rawBits.size >= 11*8:
                                     # use the first eleven bytes only, swap MSB and LSB, pack 8 bits into one byte, reverse order to compensate for 1st flip
                                     packet = np.packbits(rawBits[:11*8][::-1])[::-1]
 
-                                    np.set_printoptions(formatter={'int':hex})
-                                    self.debug(("packet:", packet.size, packet), INFO)
-                                    np.set_printoptions(formatter=None)
+                                    # check CRC8
+                                    if self.crc8(packet[2:10]) == packet[10]:
+                                        np.set_printoptions(formatter={'int':hex})
+                                        self.debug(("packet:", packet.size, packet), INFO)
+                                        np.set_printoptions(formatter=None)
 
-                                    self.identifier = "{:02X}".format((packet[2]<<8) + packet[3])
-                                    self.temperature = (packet[4] & 0x0f) * 10 + ((packet[5]>>4) & 0x0f) * 1 + (packet[5] & 0x0f) * 0.1 - 40
-                                    self.humidity = (packet[6] & 0x7f)
-                                    self.battery_ok = (packet[7]>>7) & 0x01 == 0
-                                    
-                                    self.debug(("Identifier:", self.identifier), INFO)
-                                    self.debug(("Battery ok:", self.battery_ok), INFO)
-                                    print "Temperature: %02.1f°C" % self.temperature
-                                    print "Humidity: %02i%%" % self.humidity
+                                        self.identifier = "{:02X}".format((packet[2]<<8) + packet[3])
+                                        self.temperature = (packet[4] & 0x0f) * 10 + ((packet[5]>>4) & 0x0f) * 1 + (packet[5] & 0x0f) * 0.1 - 40
+                                        self.humidity = (packet[6] & 0x7f)
+                                        self.battery_ok = (packet[7]>>7) & 0x01 == 0
+
+                                        self.debug(("Identifier:", self.identifier), INFO)
+                                        self.debug(("Battery ok:", self.battery_ok), INFO)
+                                        print "Temperature: %02.1f°C" % self.temperature
+                                        print "Humidity: %02i%%" % self.humidity
+                                    else:
+                                        self.debug("CRC-Check failed", ERROR)
                                 else:
                                     self.debug("Invalid packet length", ERROR)
-                                
+
                                 # done with this packet
                                 self.currentSymbols = np.empty(0, dtype=np.uint8)
                             else:
@@ -207,8 +226,8 @@ def main():
     raw_data = np.ravel(np.fromfile(FILENAME, dtype=np.int8))
 
     # simulate streaming of input data
-    #raw_stream = np.array_split(raw_data, 1)
-    raw_stream = [raw_data]
+    raw_stream = np.array_split(raw_data, 200)
+    #raw_stream = [raw_data]
 
     for chunk in raw_stream:
         # feed chunks to decoder
