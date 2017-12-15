@@ -1,17 +1,28 @@
 # TFA Dostmann Thermo-Hygro Sensor 30.3180.IT
 
 
-# Technical Specifications
+## Technical Specifications
 Item | Value | Description
 -------------: | ------------- | :-------------
 Model | 30.3180.IT
-Radio | ??
+Moulation | QAM
 Frequency  | 868.25MHz |
 Bit-timing | ? |
 Baudrate | 38400 |
 Coding | RZ |
 
-# Decoding Tool
+## Signal Charactersistics
+
+RF-Signals:
+![RF-Signal](docs/rf_signals.png)
+
+Demodulation:
+![Demodulation](docs/Demodulation_Description.png)
+
+Decoding:
+![Decoding](docs/Decoding_Description.png)
+
+## Decoding Tool
 Use https://github.com/baycom/tfrec as reference for decoding:
 
 ```
@@ -23,7 +34,7 @@ Found Rafael Micro R820T tuner
 0x71, 0xc9, 0x86, 0x14, 0x36, 0x60, 0x00, 0x56
 
 
-# References
+## References
 * https://nccgroup.github.io/RFTM/fsk_receiver.html
 * https://www.reaktor.com/blog/radio-waves-packets-software-defined-radio/
 * http://tfa-dostmann.de/index.php?id=129&L=0
