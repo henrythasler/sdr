@@ -1,11 +1,12 @@
 top_block.py
 
 *.wav
-
 *.dat
+*.raw
+*.pyc
+*.cfile
 
 blocks/gr-bitmap/build/
 
 TS33C/\.vscode/
 
-*.raw
