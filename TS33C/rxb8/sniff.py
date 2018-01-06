@@ -29,7 +29,7 @@ def main():
     
     print '**Started recording**'
     cb1 = pi.callback(RECEIVE_PIN, gpio.EITHER_EDGE, cbf)    
-    sleep(1)
+    sleep(10)
     cb1.cancel()
     print '**Ended recording**'
 
