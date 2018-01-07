@@ -9,10 +9,13 @@ matplotlib.use('Agg')
 
 import pigpio as gpio
 import numpy as np
-import matplotlib.pyplot as plt
 
 from time import sleep
 from datetime import datetime
+
+# used for further processing of received data
+import matplotlib.pyplot as plt
+import paho.mqtt.client as mqtt
 
 SILENT = 0
 ERROR = 1
@@ -20,11 +23,12 @@ INFO = 2
 TRACE = 3
 
 class RXB8_Decoder(object):
-    def __init__(self, host="localhost", port=8888, onDecode=None, debug_level=ERROR):
+    """Decoder-Class for external Receiver"""
+    def __init__(self, host="localhost", port=8888, debug_level=SILENT):
         self.debug_level = debug_level
         self.host = host
         self.port = port
-        self.onDecode = onDecode
+        self.onDecode = None
 
         # set up pigpio connection
         self.pi = gpio.pi(self.host, self.port)
@@ -42,7 +46,7 @@ class RXB8_Decoder(object):
         # symbol parameters
         self.pulse_short_limit = 775   # default value for maximum length of a short bit in µs (valid for optimal rx quality)
         self.gap_short_limit = 775   #  default value for maximum length of a short bit in µs (valid for optimal rx quality)
-        self.reset_limit = 4*self.gap_short_limit
+        self.frame_gap = 4*self.gap_short_limit
 
         # receiver data
         self.edges = np.empty(0, dtype=np.uint8)
@@ -51,16 +55,20 @@ class RXB8_Decoder(object):
         # decoding variables
         self.state = "idle"
         self.currentSymbols = np.empty(0, dtype=np.uint8)
+        self.min_edges = 120
 
         # sensor data
         self.temperature = 0
         self.humidity = 0
 
     def __enter__(self):
+        """Class can be used in with-statement"""
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """clean up stuff"""
+        self.callback.cancel()
+        self.pi.stop()
 
     def debug(self, message, level=0):
         """Debug output depending on debug level."""
@@ -99,16 +107,7 @@ class RXB8_Decoder(object):
         self.decoding = True
 
         # check for at least 130 edges
-        if self.edge_positions.size > 130 and self.active:
-            """
-            fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
-            fig.set_size_inches(18.5, 10.5)
-            ax.step(self.edge_positions/1000., self.edges, linewidth=1, where='post')
-            ax.grid(True)
-            fig.savefig('sniff_{}.png'.format(self.start_tick))
-            plt.close(fig)    # close the figure    
-            """
-
+        if self.edge_positions.size > self.min_edges and self.active:
             self.debug(("edge_positions:", self.edge_positions.size, self.edge_positions), TRACE)
             self.debug(("edges", self.edges.size, self.edges), TRACE)
 
@@ -116,7 +115,7 @@ class RXB8_Decoder(object):
             symbols = np.diff(self.edge_positions)
 
             # split symbols at packet boundary
-            symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.reset_limit))+1))
+            symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.frame_gap))+1))
 
             self.debug(("Symbols:", symbols.size, symbols), TRACE)
             self.debug(("symbols.shape", symbols.shape[0]), TRACE)
@@ -147,13 +146,13 @@ class RXB8_Decoder(object):
                     
                     self.currentSymbols = np.append(self.currentSymbols, symbol_chunk)
 
-                    if self.currentSymbols[0] > self.reset_limit:
+                    if self.currentSymbols[0] > self.frame_gap:
                         self.currentSymbols = self.currentSymbols[1::]
 
                     self.debug(("currentSymbols:", self.currentSymbols.size, self.currentSymbols), TRACE)
 
                     # complete packet is determined by long gap at the end
-                    if (self.currentSymbols.size > 1) and (self.currentSymbols[-1] > self.reset_limit):
+                    if (self.currentSymbols.size > 1) and (self.currentSymbols[-1] > self.frame_gap):
 
                         # extract pulses
                         pulses = self.currentSymbols[0::2]
@@ -162,7 +161,7 @@ class RXB8_Decoder(object):
                         gaps = self.currentSymbols[1::2]
 
                         # remove packet pause
-                        gaps = np.where(gaps > self.reset_limit, 0, gaps)
+                        gaps = np.where(gaps > self.frame_gap, 0, gaps)
 
                         # calculate histogram to determine length of short and long pulses
                         pulse_histogram = np.histogram(pulses, "auto")
@@ -238,12 +237,14 @@ class RXB8_Decoder(object):
                                     self.debug(("Channel:", channel), INFO)
                                     self.debug(("Rolling Code:", rollingCode), INFO)
                                     self.debug(("Battery ok:", battery_ok), INFO)
-                                    print "Temperature: %02.1f°C" % self.temperature
-                                    print "Humidity: %02i%%" % self.humidity
+                                    self.debug("Temperature: %02.1f°C" % self.temperature, INFO)
+                                    self.debug("Humidity: %02i%%" % self.humidity, INFO)
 
                                     # create plot of current packet
                                     self.write_png('pass_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
 
+                                    if self.onDecode:
+                                        self.onDecode(self.temperature, self.humidity)
                                     #self.active = False
                                 else:
                                     self.debug("Unknown Sensor or Header", ERROR)
@@ -269,14 +270,15 @@ class RXB8_Decoder(object):
         self.edges = np.empty(0, dtype=np.uint8)
         self.edge_positions = np.empty(0, dtype=np.uint32)
 
-    def run(self, pin=17, glitch_filter=150, frame_gap=30):
+    def run(self, pin=17, glitch_filter=150, frame_gap=30, onDecode=None):
+        # callback after successful decode
+        self.onDecode=onDecode
 
         # filter high frequency noise
         self.pi.set_glitch_filter(pin, glitch_filter)
 
         # detect frame gap (20ms) to try decoding of received data
         self.pi.set_watchdog(pin, 20)
-
         # watch pin
         self.callback = self.pi.callback(pin, gpio.EITHER_EDGE, self.cbf)
 
@@ -285,15 +287,15 @@ class RXB8_Decoder(object):
         while self.active:
             sleep(.1)
 
-        self.callback.cancel()
-        self.pi.stop()
+def mqtt_send(temp=0, hum=0):
+    print temp, hum
 
 def main():
     """ main function """
     # set up decoder
     with RXB8_Decoder(host="rfpi", debug_level=TRACE) as decoder:
         try:
-            decoder.run(pin=17, glitch_filter=150, frame_gap=20)
+            decoder.run(pin=17, glitch_filter=150, frame_gap=20, onDecode=mqtt_send)
         except KeyboardInterrupt:
             print "cancel"
 
