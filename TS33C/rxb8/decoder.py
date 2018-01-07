@@ -7,15 +7,17 @@ import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 
+import os
 import pigpio as gpio
 import numpy as np
 
-from time import sleep
+from time import sleep, time
 from datetime import datetime
 
 # used for further processing of received data
 import matplotlib.pyplot as plt
 import paho.mqtt.client as mqtt
+import json
 
 SILENT = 0
 ERROR = 1
@@ -67,7 +69,8 @@ class RXB8_Decoder(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         """clean up stuff"""
-        self.callback.cancel()
+        if self.callback:
+            self.callback.cancel()
         self.pi.stop()
 
     def debug(self, message, level=0):
@@ -110,6 +113,7 @@ class RXB8_Decoder(object):
         if self.edge_positions.size > self.min_edges and self.active:
             self.debug(("edge_positions:", self.edge_positions.size, self.edge_positions), TRACE)
             self.debug(("edges", self.edges.size, self.edges), TRACE)
+            self.debug(("frame_gap:", self.frame_gap), TRACE)
 
             # lengths of pulses and pauses are our symbols, convert to µs
             symbols = np.diff(self.edge_positions)
@@ -241,10 +245,10 @@ class RXB8_Decoder(object):
                                     self.debug("Humidity: %02i%%" % self.humidity, INFO)
 
                                     # create plot of current packet
-                                    self.write_png('pass_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
+                                    #self.write_png('pass_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
 
                                     if self.onDecode:
-                                        self.onDecode(self.temperature, self.humidity)
+                                        self.onDecode(json.dumps({'timestamp': int(time()), 'value': self.temperature, 'unit': '°C'}))
                                     #self.active = False
                                 else:
                                     self.debug("Unknown Sensor or Header", ERROR)
@@ -254,6 +258,7 @@ class RXB8_Decoder(object):
                                 
                         else:
                             self.debug("Invalid packet length", ERROR)
+                            self.write_png('packet_length_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Invalid packet length")
                         # done with this packet
                         self.currentSymbols = np.empty(0, dtype=np.uint8)
                     else:
@@ -270,15 +275,18 @@ class RXB8_Decoder(object):
         self.edges = np.empty(0, dtype=np.uint8)
         self.edge_positions = np.empty(0, dtype=np.uint32)
 
-    def run(self, pin=17, glitch_filter=150, frame_gap=30, onDecode=None):
+    def run(self, pin=17, glitch_filter=150, frame_gap=3100, onDecode=None):
         # callback after successful decode
         self.onDecode=onDecode
 
         # filter high frequency noise
         self.pi.set_glitch_filter(pin, glitch_filter)
 
-        # detect frame gap (20ms) to try decoding of received data
-        self.pi.set_watchdog(pin, 20)
+        # set timespan (in µs) between frames
+        self.frame_gap = frame_gap
+
+        # detect frame gap to try decoding of received data
+        self.pi.set_watchdog(pin, int(self.frame_gap/1000))
         # watch pin
         self.callback = self.pi.callback(pin, gpio.EITHER_EDGE, self.cbf)
 
@@ -287,17 +295,48 @@ class RXB8_Decoder(object):
         while self.active:
             sleep(.1)
 
-def mqtt_send(temp=0, hum=0):
-    print temp, hum
+class Mqtt(object):
+    def __init__(self, host="localhost", debug_level=SILENT):
+        self.debug_level = debug_level
+        self.host = host
+        self.connected = False
+
+        self.client = mqtt.Client('rxb8-%s' % os.getpid())
+        self.client.on_connect = self.on_connect
+
+        self.client.connect(self.host)
+        self.client.loop_start()
+
+    def __enter__(self):
+        """Class can be used in with-statement"""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.client.loop_stop()
+        self.client.disconnect()
+
+    def debug(self, message, level=0):
+        """Debug output depending on debug level."""
+        if self.debug_level >= level:
+            print message
+
+    def publish(self, json_data):
+        if self.connected:
+            self.client.publish("home/test/rxb8", json_data, retain=False)
+
+    def on_connect(self, client, userdata, flags, rc):
+        self.debug(("Connected to mqtt broker:", self.host), TRACE)
+        self.connected = True
 
 def main():
     """ main function """
     # set up decoder
-    with RXB8_Decoder(host="rfpi", debug_level=TRACE) as decoder:
-        try:
-            decoder.run(pin=17, glitch_filter=150, frame_gap=20, onDecode=mqtt_send)
-        except KeyboardInterrupt:
-            print "cancel"
+    with RXB8_Decoder(host="rfpi", debug_level=INFO) as decoder:
+        with Mqtt(host="osmc", debug_level=SILENT) as client:
+            try:
+                decoder.run(pin=17, glitch_filter=150, frame_gap=20000, onDecode=client.publish)
+            except KeyboardInterrupt:
+                print "cancel"
 
 if __name__ == "__main__":
     main()

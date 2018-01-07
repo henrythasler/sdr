@@ -68,11 +68,21 @@ GNU radio block process the raw data in chunks. So the decoder must be able to h
 The signal can also be decoded with a cheap transceiver on a Raspberry Pi.
 
 ### Hardware
-* [RXB8 433 Mhz Superheterodyne Receiver](https://de.aliexpress.com/item/RXB8-433-Mhz-Superheterodyne-Funkempf-nger-Perfekte-f-r-Arduino-AVR/32673931505.html)
-* 2 Resistors (4,7kΩ  and 10kΩ)
+* [RXB8 433 Mhz Superheterodyne Receiver](https://de.aliexpress.com/item/RXB8-433-Mhz-Superheterodyne-Funkempf-nger-Perfekte-f-r-Arduino-AVR/32673931505.html) and [Datasheet](http://p.globalsources.com/IMAGES/PDT/SPEC/508/K1045318508.pdf)
+* [433 MHz Coil Loaded Antenna](http://www.instructables.com/id/433-MHz-Coil-loaded-antenna/)
+* 2 Resistors (1kΩ  and 2.2kΩ)
 * some wiring and connectors
 
-see [RXB8-Subfolder](./RXB8)
+Raspi GPIO have a maximum rating of 3.5V. The output level on DATA is 4.5V so you **MUST** use a voltage divider to connect the data-pin to the Raspi:
+  Schematic| Breadboard
+--- | ---
+![schematic View](docs/RXB8_Raspi_schem.png) | ![Breadboard View](docs/RXB8_Raspi_bb.png)
+
+You can use any two resistors that have a ratio of 1:2 for that divider, but keep in mind, that the input impendance of a GPIO port is around 50k. So better stay well below 10k with your resistors (see [GPIO Electrical Specifications](http://www.mosaic-industries.com/embedded-systems/microcontroller-projects/raspberry-pi/gpio-pin-electrical-specifications)).
+
+### Software
+* install [pigpio library](http://abyz.me.uk/rpi/pigpio/index.html)
+* see [rxb8/decoder.py](rxb8/decoder.py)
 
 ## Decoding with rtl_433
 
