@@ -9,6 +9,7 @@ Item       | Value        | Description
 Frequency  | 433.964 MHz |
 Wavelength | 69 cm | λ=c/f
 Modulation | On-off keying (OOK) |
+Symbols | Pulse Width Modulation |
 
 ## Decoding Rules
 
@@ -41,7 +42,11 @@ After decoding all symbols to bits, the resulting bitstream contains 90 bits and
 4. Check parity bits and frame length
 5. Extract sensor signals
 
-## Example
+## Details and Examples
+
+### Frames are transmitted in groups of three every 42s
+![frame group](docs/frames.png)
+Time-Axis in ms
 
 ### Decoding of raw radio signal to bits
 
@@ -54,9 +59,20 @@ After decoding all symbols to bits, the resulting bitstream contains 90 bits and
 ## Stream decoding with Gnu Radio
 GNU radio block process the raw data in chunks. So the decoder must be able to handle these as well.
 
-## Decoding on Raspberry Pi with RXB8
+### Files:
+* decoder.grc - GNU Radio file
+* stream_decoder.py - stand-alone decoder for raw binary (demodulated) data
 
+## Decoding on Raspberry Pi with RXB8-Receiver
 
+The signal can also be decoded with a cheap transceiver on a Raspberry Pi.
+
+### Hardware
+* [RXB8 433 Mhz Superheterodyne Receiver](https://de.aliexpress.com/item/RXB8-433-Mhz-Superheterodyne-Funkempf-nger-Perfekte-f-r-Arduino-AVR/32673931505.html)
+* 2 Resistors (4,7kΩ  and 10kΩ)
+* some wiring and connectors
+
+see [RXB8-Subfolder](./RXB8)
 
 ## Decoding with rtl_433
 
