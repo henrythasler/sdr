@@ -14,6 +14,9 @@ import numpy as np
 from time import sleep, time
 from datetime import datetime
 
+# performance and profiling
+import timeit
+
 # used for further processing of received data
 import matplotlib.pyplot as plt
 import paho.mqtt.client as mqtt
@@ -48,7 +51,7 @@ class RXB8_Decoder(object):
         # symbol parameters
         self.pulse_short_limit = 775   # default value for maximum length of a short bit in µs (valid for optimal rx quality)
         self.gap_short_limit = 775   #  default value for maximum length of a short bit in µs (valid for optimal rx quality)
-        self.frame_gap = 4*self.gap_short_limit
+        self.frame_gap = 2*self.gap_short_limit
 
         # receiver data
         self.edges = np.empty(0, dtype=np.uint8)
@@ -87,6 +90,8 @@ class RXB8_Decoder(object):
             ha='center', va='bottom', alpha=0.4)
         ax.step(data[0], data[1], linewidth=1, where='post')
         ax.grid(True)
+        xmin, xmax = plt.xlim()
+        plt.xlim(0, xmax)
         plt.tight_layout()
         fig.savefig(filename)
         plt.close(fig)    # close the figure          
@@ -106,17 +111,16 @@ class RXB8_Decoder(object):
             self.decode()
 
     def decode(self):
-        # set semaphore
-        self.decoding = True
-
-        # check for at least 130 edges
+        """Actual decoder"""
+        # ignore packets with less than min_edges
         if self.edge_positions.size > self.min_edges and self.active:
             self.debug(("edge_positions:", self.edge_positions.size, self.edge_positions), TRACE)
             self.debug(("edges", self.edges.size, self.edges), TRACE)
             self.debug(("frame_gap:", self.frame_gap), TRACE)
 
-            # lengths of pulses and pauses are our symbols, convert to µs
+            # lengths of pulses and pauses are our symbols
             symbols = np.diff(self.edge_positions)
+
 
             # split symbols at packet boundary
             symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.frame_gap))+1))
@@ -126,11 +130,11 @@ class RXB8_Decoder(object):
             self.debug(("state", self.state), TRACE)
 
             # if symbols are split into 2+ arrays at packet boundary we
-            # have a valid frame
+            # *might* have a valid frame
             if symbols.shape[0] > 1:
                 self.state = "frame"
 
-            # process all parts separately
+            # we process the symbols as one chunk
             for symbol_chunk in symbols:
                 self.debug(("state", self.state), TRACE)
                 if (symbols.size == 1) or self.state == "idle":
@@ -245,7 +249,7 @@ class RXB8_Decoder(object):
                                     self.debug("Humidity: %02i%%" % self.humidity, INFO)
 
                                     # create plot of current packet
-                                    #self.write_png('pass_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
+                                    self.write_png('{}_pass.png'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
 
                                     if self.onDecode:
                                         self.onDecode(json.dumps({'timestamp': int(time()), 'value': self.temperature, 'unit': '°C'}))
@@ -254,11 +258,11 @@ class RXB8_Decoder(object):
                                     self.debug("Unknown Sensor or Header", ERROR)
                             else:
                                 self.debug("Parity check failed", ERROR)
-                                self.write_png('parity_error_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"parity error")
+                                self.write_png('{}_parity_error.png'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")), [self.edge_positions/1000., self.edges], u"parity error")
                                 
                         else:
                             self.debug("Invalid packet length", ERROR)
-                            self.write_png('packet_length_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Invalid packet length")
+                            #self.write_png('{}_packet_length.png'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")), [self.edge_positions/1000., self.edges], u"Invalid packet length")
                         # done with this packet
                         self.currentSymbols = np.empty(0, dtype=np.uint8)
                     else:
@@ -290,7 +294,7 @@ class RXB8_Decoder(object):
         # watch pin
         self.callback = self.pi.callback(pin, gpio.EITHER_EDGE, self.cbf)
 
-        # wait for something to happen
+        # wait for something to happen, forever...
         self.active = True
         while self.active:
             sleep(.1)
@@ -301,7 +305,7 @@ class Mqtt(object):
         self.host = host
         self.connected = False
 
-        self.client = mqtt.Client('rxb8-%s' % os.getpid())
+        self.client = mqtt.Client('raspi-%s' % os.getpid())
         self.client.on_connect = self.on_connect
 
         self.client.connect(self.host)
@@ -330,11 +334,11 @@ class Mqtt(object):
 
 def main():
     """ main function """
-    # set up decoder
-    with RXB8_Decoder(host="rfpi", debug_level=INFO) as decoder:
-        with Mqtt(host="osmc", debug_level=SILENT) as client:
+    # set up decoder and mqtt-connection
+    with RXB8_Decoder(host="rfpi", debug_level=TRACE) as decoder:
+        with Mqtt(host="osmc", debug_level=SILENT) as mqtt_client:
             try:
-                decoder.run(pin=17, glitch_filter=150, frame_gap=20000, onDecode=client.publish)
+                decoder.run(pin=17, glitch_filter=150, frame_gap=20000, onDecode=mqtt_client.publish)
             except KeyboardInterrupt:
                 print "cancel"
 
