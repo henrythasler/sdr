@@ -104,10 +104,8 @@ class RXB8_Decoder(object):
         # watchdog event
         else:
 #            self.debug("reset gap detected")
-            self.edge_positions = np.append(self.edge_positions, gpio.tickDiff(self.start_tick, tick))
-
-            # marker for watchdog
-            self.edges = np.append(self.edges, 4)
+            self.edge_positions = np.append(self.edge_positions, gpio.tickDiff(self.start_tick, tick))          
+            self.edges = np.append(self.edges, 4)   # 4 = marker for watchdog
             self.decode()
 
     def decode(self):
@@ -123,7 +121,9 @@ class RXB8_Decoder(object):
 
 
             # split symbols at packet boundary
-            symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.frame_gap))+1))
+            #symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.frame_gap))+1))
+
+#            self.start_pattern = 
 
             self.debug(("Symbols:", symbols.size, symbols), TRACE)
             self.debug(("symbols.shape", symbols.shape[0]), TRACE)
