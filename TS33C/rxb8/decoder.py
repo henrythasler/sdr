@@ -99,10 +99,8 @@ class RXB8_Decoder(object):
         # watchdog event
         else:
 #            self.debug("reset gap detected")
-            self.edge_positions = np.append(self.edge_positions, gpio.tickDiff(self.start_tick, tick))
-
-            # marker for watchdog
-            self.edges = np.append(self.edges, 4)
+            self.edge_positions = np.append(self.edge_positions, gpio.tickDiff(self.start_tick, tick))          
+            self.edges = np.append(self.edges, 4)   # 4 = marker for watchdog
             self.decode()
 
     def decode(self):
@@ -119,7 +117,9 @@ class RXB8_Decoder(object):
             symbols = np.diff(self.edge_positions)
 
             # split symbols at packet boundary
-            symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.frame_gap))+1))
+            #symbols = np.array(np.split(symbols, np.ravel(np.where(symbols > self.frame_gap))+1))
+
+#            self.start_pattern = 
 
             self.debug(("Symbols:", symbols.size, symbols), TRACE)
             self.debug(("symbols.shape", symbols.shape[0]), TRACE)
@@ -131,7 +131,7 @@ class RXB8_Decoder(object):
                 self.state = "frame"
 
             # process all parts separately
-            for symbol_chunk in symbols:
+            for symbol_chunk in [symbols]:
                 self.debug(("state", self.state), TRACE)
                 if (symbols.size == 1) or self.state == "idle":
                     # skip leading inter-frame gap
@@ -245,7 +245,7 @@ class RXB8_Decoder(object):
                                     self.debug("Humidity: %02i%%" % self.humidity, INFO)
 
                                     # create plot of current packet
-                                    #self.write_png('pass_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
+                                    self.write_png('pass_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
 
                                     if self.onDecode:
                                         self.onDecode(json.dumps({'timestamp': int(time()), 'value': self.temperature, 'unit': '°C'}))
@@ -254,11 +254,11 @@ class RXB8_Decoder(object):
                                     self.debug("Unknown Sensor or Header", ERROR)
                             else:
                                 self.debug("Parity check failed", ERROR)
-                                self.write_png('parity_error_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"parity error")
+                                #self.write_png('parity_error_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"parity error")
                                 
                         else:
                             self.debug("Invalid packet length", ERROR)
-                            self.write_png('packet_length_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Invalid packet length")
+                            #self.write_png('packet_length_{}.png'.format(self.start_tick), [self.edge_positions/1000., self.edges], u"Invalid packet length")
                         # done with this packet
                         self.currentSymbols = np.empty(0, dtype=np.uint8)
                     else:
@@ -331,7 +331,7 @@ class Mqtt(object):
 def main():
     """ main function """
     # set up decoder
-    with RXB8_Decoder(host="rfpi", debug_level=INFO) as decoder:
+    with RXB8_Decoder(host="rfpi", debug_level=TRACE) as decoder:
         with Mqtt(host="osmc", debug_level=SILENT) as client:
             try:
                 decoder.run(pin=17, glitch_filter=150, frame_gap=20000, onDecode=client.publish)
