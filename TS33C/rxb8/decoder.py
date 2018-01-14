@@ -37,6 +37,7 @@ class RXB8_Decoder(object):
 
         # set up pigpio connection
         self.pi = gpio.pi(self.host, self.port)
+        self.pi.set_mode(27, gpio.OUTPUT)
         if not self.pi.connected:
             self.debug("Could not connected to " + self.host)
             exit()
@@ -248,6 +249,10 @@ class RXB8_Decoder(object):
                                     self.debug("Temperature: %02.1f°C" % self.temperature, INFO)
                                     self.debug("Humidity: %02i%%" % self.humidity, INFO)
 
+                                    self.pi.write(27, 1)
+                                    sleep(.001)
+                                    self.pi.write(27, 0)
+
                                     # create plot of current packet
                                     self.write_png('{}_pass.png'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")), [self.edge_positions/1000., self.edges], u"Temp={}, Hum={}".format(self.temperature, self.humidity))
 
@@ -335,7 +340,7 @@ class Mqtt(object):
 def main():
     """ main function """
     # set up decoder and mqtt-connection
-    with RXB8_Decoder(host="rfpi", debug_level=TRACE) as decoder:
+    with RXB8_Decoder(host="rfpi", debug_level=SILENT) as decoder:
         with Mqtt(host="osmc", debug_level=SILENT) as mqtt_client:
             try:
                 decoder.run(pin=17, glitch_filter=150, frame_gap=20000, onDecode=mqtt_client.publish)
