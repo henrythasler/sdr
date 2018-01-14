@@ -5,7 +5,7 @@
 """
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 
 import os
 import numpy as np
@@ -29,12 +29,13 @@ def write_png(filename, data, title=None):
     fig.text(0.5, 0, datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         fontsize=8, color='black',
         ha='center', va='bottom', alpha=0.4)
-#    ax.step(data[0], data[1], linewidth=1, where='post')
-    ax.plot(data[0], data[1], linewidth=1)
+    ax.step(data[0], data[1], linewidth=1, where='post')
+#    ax.plot(data[0], data[1], linewidth=1)
     ax.grid(True)
     plt.tight_layout()
+    plt.show()
     fig.savefig(filename)
-    plt.close(fig)    # close the figure          
+    #plt.close(fig)    # close the figure          
 
 def main():
     """ main function """
@@ -53,13 +54,39 @@ def main():
         1014,   926,  1020,   938,  1022,   442,   528,   450,   522,
          942,   538,   443,  1013,   934,   544,   430,   540,   456,
          512,   444,  1036,   430,   564,   914,   526,   442,   528,
-         444,   556,   416,   543,   431,  1040,   438,   526,   436, 20318])
+         444,   556,   416,   543,   431,  1040,   438,   526,   436])
 
-    pattern = np.array([ 972,   958,   988,   500,  478,   500,   956,   512,   468])
+    pulse_short = 460
+    pulse_long = 989
+    gap_short = 492
+    gap_long = 998
+    """
+    pattern = np.array([ 500,   500,   500,   500,  500,   500,   500,   500,   500])
+    pattern2 = np.array([ 500,   500,   500,   500,  500,   500,   500,   500,   500, 500,   500,   500,   500,  500,   500,   500,   500,   500, 500,   500,   500,   500,  500,   500,   500,   500,   500])
+    pattern = np.array([ 1028,   936,  1074,   862,  1122,   366,   510,   464,   522])
 
-    res = np.convolve(symbols, pattern, mode='valid')
+    symbols = np.array([1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,])
+    zeros = np.array([0, 0, 0, 0, 0, 0])
+    ones = np.array([1, 1, 1, 1, 1])
+    pattern = np.array([0, 0, 0, 1, 0, 0])
+    """
 
-    write_png("test.png", [range(0,res.size), res], title=None)
+    random = np.random.uniform(0,1000,size=100)
+    symbols = np.concatenate( (random, symbols) )
+
+    pattern = symbols[40:60]
+    pattern = np.array([ pulse_long,  gap_long,   pulse_long,   gap_long,   pulse_long, gap_short, pulse_short, gap_short, pulse_short, gap_long, pulse_short])
+    mean = np.mean(symbols)
+    symbols_normalised = symbols - mean
+    pattern_normalised = pattern - mean
+
+    res = np.correlate(symbols_normalised, pattern_normalised)
+
+    index = np.argmax(res)
+    print("max=", index)
+
+    write_png("correlate.png", [range(0,res.size), res], title=None)
+    write_png("symbols.png", [range(0,symbols.size), symbols], title=None)
 
 if __name__ == "__main__":
     main()

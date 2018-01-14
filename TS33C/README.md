@@ -390,3 +390,4 @@ Pulse data: 67 pulses
 * https://github.com/merbanan/rtl_433
 * http://www.hidekielectronics.com/?m=99
 * https://github.com/kevinmehall/rtlsdr-433m-sensor
+* https://stackoverflow.com/questions/13439718/how-to-interpret-numpy-correlate-and-numpy-corrcoef-values
