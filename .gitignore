@@ -5,6 +5,9 @@ top_block.py
 *.raw
 *.pyc
 *.cfile
+*.cu8
+*.fc32
+*.pyc
 
 blocks/gr-bitmap/build/
 
@@ -12,3 +15,4 @@ TS33C/\.vscode/
 
 
 TS33C/rxb8/trace\.py
+berner/sample.cu8

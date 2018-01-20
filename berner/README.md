@@ -1,17 +1,39 @@
-# Telis 1 RTS remote control
-Remote control for various home appliances.
+# berner remote control
+
 
 # Technical Specifications
 Item | Value | Description
 -------------: | ------------- | :-------------
-Frequency  | 433.42MHz |
-Bit-timing | 60ms |
-bitrate | 16.67 baud |
+Model | BHS140
+Radio | fixed code, unidirectional
+Channels | 4 |
+Frequency  | 868.2MHz |
+Symbol-Rate | 1 kHz |
 Coding | ? |
+
+## analyze samples
+
+```
+$ rtl_sdr -f 868000000 -s 2048000 sample.cu8
+Found 1 device(s):
+  0:  Realtek, RTL2838UHIDIR, SN: 00000001
+
+Using device 0: Generic RTL2832U OEM
+Found Rafael Micro R820T tuner
+[R82XX] PLL not locked!
+Sampling at 2048000 S/s.
+Tuned to 868000000 Hz.
+Tuner gain set to automatic.
+Reading samples in async mode...
+^CSignal caught, exiting!
+
+User cancel, exiting...
+
+$ inspectrum sample.cu8 
+```
 
 # Decoding Tool
 
 
-
 # References
-* https://www.somfy.de/produkte/1810630/telis-1-rts-
+* http://berner-torantriebe.eu/files/berner_handsender_090516.pdf
