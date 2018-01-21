@@ -5,24 +5,36 @@
 from time import sleep
 import pigpio as gpio
 from lib.rfm69 import Rfm69
-#import numpy as np
+import numpy as np
 
 RESET = 24
 DATA = 25
 
 start_tick = 0
 state = 0 # 0=Idle, 1=Frame
+bits = None
 
 def cbf(pin, level, tick):
     global start_tick
     global state
+    global bits
     if level == 1:
         start_tick = tick
     elif level == 0:
         delta = gpio.tickDiff(start_tick, tick)
-        if (delta > 4000) and (delta < 6000):
+        if (state == 0) and (delta > 5300) and (delta < 5700):
+            bits = np.empty(0, dtype=np.uint8)
             state = 1
-        elif (delta > 300) and (delta < 360):
+        elif (state == 1) and (delta < 500):
+            bits = np.append(bits, [0])
+        elif (state == 1) and (delta > 500) and (delta < 1000):
+            bits = np.append(bits, [1])
+        elif state == 1:
+            # print
+            if bits.size >= 32:
+                print "Rx: "+''.join('0x{:02X} '.format(x) for x in np.packbits(bits)[:4])
+            state = 0
+        else:
             pass
     else:
         pass
@@ -42,14 +54,15 @@ def main():
 
     data = []
     
-    with Rfm69(host="rfpi", channel=0, baudrate=32000, debug_level=3) as rf:
+    with Rfm69(host="rfpi", channel=0, baudrate=32000, debug_level=0) as rf:
 
         # just to make sure SPI is working
         rx_data = rf.read_single(0x5A)
-        print ''.join('0x{:02x} '.format(x) for x in [rx_data])
+        #print ''.join('0x{:02x} '.format(x) for x in [rx_data])
         if rx_data != 0x55:
             print "SPI Error"
 
+        # configure 
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
         
         rf.write_burst(0x07, [0xD9, 0x12, 0x00])      # Carrier Frequency 868.25MHz
@@ -61,9 +74,9 @@ def main():
         rf.write_single(0x02, 0b01101000)     # DataModul: OOK, continuous w/o bit sync
         rf.write_single(0x01, 0b00010000)     # OpMode: SequencerOn, RX
 
+        # wait until RFM-Module is ready
         while (rf.read_single(0x27) & 0x80) == 0:
             print "waiting..."
-
 
         # filter high frequency noise
         pi.set_glitch_filter(DATA, 150)
@@ -71,7 +84,9 @@ def main():
         # watch pin
         callback = pi.callback(DATA, gpio.EITHER_EDGE, cbf)
 
-        sleep(10)
+        print "Scanning... Press Ctrl-C to abort"
+        while 1:
+            pass
 
     pi.stop()
 
@@ -79,6 +94,6 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print "KeyboardInterrupt"
+        print ""
     finally:
         print "done"
