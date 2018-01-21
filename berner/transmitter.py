@@ -62,7 +62,7 @@ def main():
         repetitions = 5
 
         # create preamble pulse waveform
-        pi.wave_add_generic([gpio.pulse(1<<DATA, 0, 4660), gpio.pulse(0, 1<<DATA, 334)])
+        pi.wave_add_generic([gpio.pulse(1<<DATA, 0, 5430), gpio.pulse(0, 1<<DATA, 334)])
         preamble = pi.wave_create();
 
         # create "0" pulse waveform
