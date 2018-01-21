@@ -2,13 +2,16 @@
 # -*- coding: utf-8 -*-
 """OOK-Decoder"""
 
-from time import sleep
 import pigpio as gpio
 from lib.rfm69 import Rfm69
 import numpy as np
 
+# define pigpio GPIO-pins where RESET- and DATA-Pin of RFM69-Transceiver are connected
 RESET = 24
 DATA = 25
+
+# define pigpio-host
+HOST = "rfpi"
 
 start_tick = 0
 state = 0 # 0=Idle, 1=Frame
@@ -41,10 +44,10 @@ def cbf(pin, level, tick):
 
 def main():
     """ main function """
-    pi = gpio.pi(host="rfpi")
+    pi = gpio.pi(host=HOST)
     if not pi.connected:
-        exit()    
-    pi.set_mode(RESET, gpio.OUTPUT) 
+        exit()
+    pi.set_mode(RESET, gpio.OUTPUT)
     pi.set_mode(DATA, gpio.OUTPUT)
     pi.set_pull_up_down(DATA, gpio.PUD_OFF)
     pi.write(DATA, 0)
@@ -52,19 +55,16 @@ def main():
     pi.write(RESET, 1)
     pi.write(RESET, 0)
 
-    data = []
-    
-    with Rfm69(host="rfpi", channel=0, baudrate=32000, debug_level=0) as rf:
+    with Rfm69(host=HOST, channel=0, baudrate=32000, debug_level=0) as rf:
 
         # just to make sure SPI is working
         rx_data = rf.read_single(0x5A)
-        #print ''.join('0x{:02x} '.format(x) for x in [rx_data])
         if rx_data != 0x55:
             print "SPI Error"
 
-        # configure 
+        # configure
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
-        
+
         rf.write_burst(0x07, [0xD9, 0x12, 0x00])      # Carrier Frequency 868.25MHz
 
         rf.write_single(0x18, 0b00000000)     # Lna: 50 Ohm, auto gain
