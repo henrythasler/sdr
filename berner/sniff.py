@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """OOK-Decoder"""
 
+from time import sleep
 import pigpio as gpio
 from lib.rfm69 import Rfm69
 import numpy as np
@@ -86,7 +87,7 @@ def main():
 
         print "Scanning... Press Ctrl-C to abort"
         while 1:
-            pass
+            sleep(1)
 
     pi.stop()
 

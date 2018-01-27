@@ -11,6 +11,7 @@ Frequency  | 868.2MHz |
 Modulation | On-Off-Keying (OOK) | 
 Symbol-Rate | 1 kHz |
 Symbol-Encoding | Pulse-Width |
+Antenna-Length (λ/4) | 86mm
 
 ## analyze samples
 
