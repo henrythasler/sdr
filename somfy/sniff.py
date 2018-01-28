@@ -17,21 +17,32 @@ HOST = "rfpi"
 start_tick = 0
 state = 0 # 0=Idle, 1=Frame
 bits = np.empty(0, dtype=np.uint8)
+hw_sync = np.empty(0)
+tolerance = 100 #µs
+clock = 640
 
 def cbf(pin, level, tick):
     global start_tick
     global state
     global bits
+    global hw_sync
+    global clock
 
     # End of Gap
     if level == 1:
         delta = gpio.tickDiff(start_tick, tick)
         start_tick = tick
+        # HW-Sync
+        if (0 <= state <=2) and (delta in range(2500-2*tolerance, 2500+2*tolerance)):
+            if state < 2:
+                hw_sync = np.empty(0)
+            hw_sync = np.append(hw_sync, [delta])
+            state = 2
         # long gap
-        if (state == 1) and (delta > 1200) and (delta < 1400):
+        elif (state == 3) and (delta in range(2*clock-tolerance, 2*clock+tolerance)):
             bits = np.append(bits, [0, 0])
         # short gap
-        elif (state == 1) and (delta > 550) and (delta < 750):
+        elif (state == 3) and (delta in range(clock-tolerance, clock+tolerance)):
             bits = np.append(bits, [0])
         else:
             pass
@@ -40,21 +51,32 @@ def cbf(pin, level, tick):
     elif level == 0:
         delta = gpio.tickDiff(start_tick, tick)
         start_tick = tick
-        # start of frame
-        if (state == 0) and (delta > 4600) and (delta < 5000):
-            bits = np.empty(0, dtype=np.uint8)
+        # wake-up pulse
+        if (state == 0) and (delta in range(10050-tolerance, 10050+tolerance)):
             state = 1
+        # HW-Sync
+        elif (0 <= state <=2) and (delta in range(2500-2*tolerance, 2500+2*tolerance)):
+            if state < 2:
+                hw_sync = np.empty(0)
+            hw_sync = np.append(hw_sync, [delta])
+            state = 2
+        # start of frame mark
+        elif (state == 2) and (delta in range(4850-2*tolerance, 4850+2*tolerance)):
+            clock = int(np.average(hw_sync)/4)
+            print "Clock Sync:", hw_sync, clock
+            bits = np.empty(0, dtype=np.uint8)
+            state = 3
         # long pulse
-        elif (state == 1) and (delta > 1200) and (delta < 1400):
+        elif (state == 3) and (delta in range(2*clock-tolerance, 2*clock+tolerance)):
             bits = np.append(bits, [1, 1])
         # short pulse
-        elif (state == 1) and (delta > 550) and (delta < 750):
+        elif (state == 3) and (delta in range(clock-tolerance, clock+tolerance)):
             bits = np.append(bits, [1])
         else:
             pass
 
     # Watchdog timeout
-    elif (level == 2) and (state == 1):
+    elif (level == 2) and (state > 0):
         # skip first bit, because it is part of the start of frame mark
         bits = bits[1::]
 
@@ -80,6 +102,7 @@ def cbf(pin, level, tick):
             print "    Rolling Code: "+''.join('{:02X} '.format(x) for x in frame[2:4])
         else:
             pass
+        bits = np.empty(0, dtype=np.uint8)
         state = 0
     else:
         pass
@@ -91,7 +114,7 @@ def main():
         exit()
     pi.set_mode(RESET, gpio.OUTPUT)
     pi.set_mode(DATA, gpio.OUTPUT)
-    pi.set_pull_up_down(DATA, gpio.PUD_OFF)
+    pi.set_pull_up_down(DATA, gpio.PUD_DOWN)
     pi.write(DATA, 0)
 
     pi.write(RESET, 1)
@@ -107,10 +130,16 @@ def main():
         # configure
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
-        rf.write_burst(0x07, [0x6C, 0x7A, 0x00]) # Frf: Carrier Frequency 434MHz
+        rf.write_burst(0x07, [0x6C, 0x9A, 0x00]) # Frf: Carrier Frequency 434.42MHz/61.035 
 
-        rf.write_single(0x18, 0b00000000)     # Lna: 50 Ohm, auto gain
+#        rf.write_single(0x18, 0b00000000)     # Lna: 50 Ohm, auto gain
+
+#        rf.write_single(0x19, 0b01001001)     # RxBw: 4% DCC, BW=100kHz
         rf.write_single(0x19, 0b01000000)     # RxBw: 4% DCC, BW=250kHz
+
+        # make sure we conserve the thesold setting in between WUP and HW-Sync
+        rf.write_single(0x1B, 0b01000011)     # ThresType: Peak, Decrement RSSI thresold once every 8 chips (max)
+#        rf.write_single(0x1D, 50)            # OokFix
 
         # Receive
         rf.write_single(0x02, 0b01101000)     # DataModul: OOK, continuous w/o bit sync
