@@ -44,5 +44,6 @@ The RFM69 Data-Pin looks like this:
 
 * https://www.somfy.de/produkte/1810630/telis-1-rts-
 * [Somfy Smoove Origin RTS Protocol](https://pushstack.wordpress.com/somfy-rts-protocol/)
+* [NodeMCU Somfy module](https://nodemcu.readthedocs.io/en/master/en/modules/somfy/)
 * [QUICK PROGRAMMING GUIDE FOR ALL RTS MOTORS](http://www.automatedshadeinc.com/files/motors/all-somfy-rts%20motors-programming-quick-guide-02-09.pdf)
 
