@@ -6,6 +6,8 @@ from time import sleep
 import pigpio as gpio
 from lib.rfm69 import Rfm69
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # define pigpio GPIO-pins where RESET- and DATA-Pin of RFM69-Transceiver are connected
 RESET = 24
@@ -21,12 +23,15 @@ hw_sync = np.empty(0)
 tolerance = 100 #µs
 clock = 640
 
+histogram = [0, np.zeros(56)]
+
 def cbf(pin, level, tick):
     global start_tick
     global state
     global bits
     global hw_sync
     global clock
+    global histogram
 
     # End of Gap
     if level == 1:
@@ -84,8 +89,14 @@ def cbf(pin, level, tick):
         if bits.size < 112:
             bits = np.append(bits, [0])
         if bits.size == 112:
+            # decode manchester (rising edge = 1, falling edge = 0)
             decoded = np.ravel(np.where(np.reshape(bits, (-1, 2)) == [0, 1], 1, 0))[::2]
+
+            histogram[1] = histogram[1] + decoded
+            histogram[0] += 1
+
             frame = np.packbits(decoded)
+            print "Raw: "+''.join('0x{:02X} '.format(x) for x in frame)
 
             for i in range(frame.size-1, 0, -1):
                 frame[i] = frame[i] ^ frame[i-1]
@@ -164,6 +175,15 @@ def main():
 
     pi.stop()
 
+def show_histogram(matrix, normalize=1):
+    fig, ax = plt.subplots()
+    matrix = matrix/normalize
+    img1 = ax.imshow(matrix)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    fig.colorbar(img1, cax=cax)
+    plt.show()        
+
 if __name__ == "__main__":
     try:
         main()
@@ -171,3 +191,5 @@ if __name__ == "__main__":
         print ""
     finally:
         print "done"
+        if histogram[0] > 0:
+            show_histogram(np.reshape(histogram[1], (-1, 8)), normalize=histogram[0])
