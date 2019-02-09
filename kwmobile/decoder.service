@@ -1,0 +1,15 @@
+# copy this file to /etc/systemd/system/
+# enable with: 
+
+[Unit]
+Description=rfm69Decoder
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/henry/sdr/kwmobile/decoder.py
+RestartSec=30
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

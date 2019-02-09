@@ -19,6 +19,9 @@ class Rfm69(object):
 
         # RFM69-specific variables
         self.pi = gpio.pi(host, port)
+        if not self.pi.connected:
+            raise ValueError('Could not connect to pigpio-device at {}:{}'.format(host, port))
+
         self.handle = self.pi.spi_open(channel, baudrate, 0)    # Flags: CPOL=0 and CPHA=0
 
     def __enter__(self):
@@ -32,7 +35,7 @@ class Rfm69(object):
     def debug(self, message, level=0):
         """Debug output depending on debug level."""
         if self.debug_level >= level:
-            print message
+            print(message)
 
     def read_single(self, address):
         """Read single register via spi"""
