@@ -54,6 +54,11 @@ class RXB8_Decoder(object):
         self.gap_short_limit = 775   #  default value for maximum length of a short bit in µs (valid for optimal rx quality)
         self.frame_gap = 2*self.gap_short_limit
 
+        self.pulse_short = 460
+        self.pulse_long = 989
+        self.gap_short = 492
+        self.gap_long = 998
+
         # receiver data
         self.edges = np.empty(0, dtype=np.uint8)
         self.edge_positions = np.empty(0, dtype=np.uint32)
@@ -129,6 +134,29 @@ class RXB8_Decoder(object):
             self.debug(("Symbols:", symbols.size, symbols), TRACE)
             self.debug(("symbols.shape", symbols.shape[0]), TRACE)
             self.debug(("state", self.state), TRACE)
+
+            pattern = np.array([ self.pulse_long,  self.gap_long,   self.pulse_long,   self.gap_long,   
+                self.pulse_long, self.gap_short, self.pulse_short, self.gap_short, self.pulse_short, 
+                self.gap_long, self.pulse_short])
+
+            pattern = np.interp(np.linspace(0, np.sum(pattern), 250), np.cumsum(pattern), [1,0,1,0,1,0,1,0,1,0,1])
+            self.debug(("Pattern:", pattern.size, pattern), TRACE)
+
+            #symbols = symbols[:-1:]
+            symbols = symbols[np.where(symbols <= self.frame_gap)]
+            mean = np.mean(symbols)
+            symbols_normalised = symbols - mean
+            pattern_normalised = pattern - mean
+            res = np.correlate(symbols_normalised, pattern_normalised)
+            index = np.argmax(res)
+            print("max=", index)
+
+            self.write_png('raw.png', [self.edge_positions/1000., self.edges])
+            self.write_png("correlate.png", [range(0,res.size), res])
+            self.write_png("symbols.png", [range(0,symbols.size), symbols])
+#            self.write_png("pattern.png", [range(0,pattern.size), pattern])
+            self.write_png("pattern.png", [np.cumsum(pattern), [1,0,1,0,1,0,1,0,1,0,1]])
+            self.write_png('filtered.png', [self.edge_positions[index::]/1000., self.edges[index::]])
 
             # if symbols are split into 2+ arrays at packet boundary we
             # *might* have a valid frame
@@ -340,7 +368,7 @@ class Mqtt(object):
 def main():
     """ main function """
     # set up decoder and mqtt-connection
-    with RXB8_Decoder(host="rfpi", debug_level=SILENT) as decoder:
+    with RXB8_Decoder(host="rfpi", debug_level=TRACE) as decoder:
         with Mqtt(host="osmc", debug_level=SILENT) as mqtt_client:
             try:
                 decoder.run(pin=17, glitch_filter=150, frame_gap=20000, onDecode=mqtt_client.publish)
