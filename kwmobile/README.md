@@ -1,18 +1,33 @@
 # kwmobile 433Mhz temperature and humidity sensor
 
-This is a description of how to grab sensor data from a 433MHz wireless temperature and humidity sensor.
+This is a description of how to grab sensor data from a 433MHz wireless temperature and humidity sensor. The brand could be kwmobile or something else. Just look at the general appearance. If it looks similar to this appliance, there is a good chance it will work.
 
-## Prerequisites
+![Sensor](doc/kwmobile_sensor.png)
 
-- install [pigpiod](http://abyz.me.uk/rpi/pigpio/download.html)
+## Technical Specifications
+Item | Value | Description
+-------------: | ------------- | :-------------
+Channels | 3 |
+Frequency  | 433.92MHz | 
+Modulation | [PPM](https://en.wikipedia.org/wiki/Pulse-position_modulation) | 
+Symbol-Rate | variable |
+Symbol-Encoding | Pulse-Width |
 
-## analyze samples
+![Datasheet](doc/kwmobile_datasheet.jpg)
 
-rtl_sdr -f 434000000 -s 2048000 sample.cu8
+## Hardware Setup
 
-Analyze the data with inspectrum: `$ inspectrum sample.cu8`
+Hook up your RTL2832U-based USB-receiver [RTL_SDR by Radioddity](https://www.radioddity.com/collections/analog-sdr/products/100khz-1766mhz-0-1mhz-1-7ghz-full-band-100khz-1766mhz-0-1mhz-1-7ghz-full-band) or whatever you want to use.
+
+## Analyze samples
+
+Sniff raw IQ-Data with `rtl_sdr -f 434000000 -s 2048000 sample.cu8`
+
+Analyze with [inspectrum](https://github.com/miek/inspectrum): `$ inspectrum sample.cu8`
 
 ## Decoding Rules
+
+![Sample Annotation](doc/bits_raw_annotation.jpg)
 
 Symbol | Meaning | Comment
 --- | --- | ---
@@ -27,6 +42,10 @@ Type | Timing
 `long` | 2000µs
 `very long` | 4000µs
 
+![Decoding Rules](doc/decoding_rules.png)
+
+## Decoding with rtl_433
+
 ```
 $ rtl_433 -vv- a -f 433.92M -s 1024k
 time      : 2019-02-09 10:10:19
@@ -38,7 +57,18 @@ bitbuffer:: Number of rows: 12
 [01] {36} 80 81 11 f6 00 : 10000000 10000001 00010001 11110110 0000
 [02] {36} 80 81 11 f6 00 : 10000000 10000001 00010001 11110110 0000
 [03] {36} 80 81 11 f6 00 : 10000000 10000001 00010001 11110110 0000
+```
 
+## Decoding with RFM89-Module
+```
+henry@i7-bionic:~/dev/sdr/kwmobile$ python sniff.py 
+Scanning... Press Ctrl-C to abort
+Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128  Channel=0 Battery=True  29.4°C  94% rH
+Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128  Channel=0 Battery=True  29.4°C  94% rH
+Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128  Channel=0 Battery=True  29.4°C  94% rH
+Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128  Channel=0 Battery=True  29.4°C  94% rH
+Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128  Channel=0 Battery=True  29.4°C  94% rH
+Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128  Channel=0 Battery=True  29.4°C  94% rH
 ```
 
 ## Installation for RPI3

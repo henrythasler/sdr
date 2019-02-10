@@ -53,7 +53,7 @@ def cbf(pin, level, tick):
             channel = (frame[1]&0x30) >> 4
             battery = (frame[1]&0x80) == 0x80
             id = frame[0]
-            print "Frame: "+''.join('{:02X} '.format(x) for x in frame) + " - ID={}  Channel={} Battery={}  {:.1f}°C  {:.0f}% rH".format(id, channel, battery, temperature, humidity)
+            print "Frame: "+''.join('{:02X} '.format(x) for x in frame) + " ".join('{:08b} '.format(x) for x in frame) + " - ID={}  Channel={} Battery={}  {:.1f}°C  {:.0f}% rH".format(id, channel, battery, temperature, humidity)
         else:
             pass
         bits = np.empty(0, dtype=np.uint8)
