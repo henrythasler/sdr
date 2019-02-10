@@ -100,3 +100,4 @@ check logfile with `sudo journalctl -u decoder.service`
 ## References
 
 - https://github.com/merbanan/rtl_433/blob/master/src/devices/nexus.c
+- https://github.com/aquaticus/nexus433
