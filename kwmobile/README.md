@@ -75,6 +75,22 @@ Frame: 80 81 26 F5 E0 10000000  10000001  00100110  11110101  11100000  - ID=128
 
 - [install pigpio](http://abyz.me.uk/rpi/pigpio/download.html)
 
+Installing from source does not set up a systemd-config file. So we do it manually:
+```
+sudo nano /etc/systemd/system/pigpiod.service
+    [Unit]
+    Description=Daemon required to control GPIO pins via pigpio
+    [Service]
+    ExecStart=/usr/local/bin/pigpiod -s 5 -b 200
+    ExecStop=/bin/systemctl kill -s SIGKILL pigpiod
+    Type=forking
+    [Install]
+    WantedBy=multi-user.target
+
+sudo systemctl enable pigpiod
+sudo systemctl start pigpiod
+```
+
 additional software:
 ```
 sudo apt-get install git python3-pip libatlas-base-dev postgresql-client
@@ -89,7 +105,7 @@ To enable a systemd-service:
 ```
 sudo cp decoder.service /etc/systemd/system/
 sudo nano /etc/systemd/system/decoder.service
-    # modify path to decoder.py accordingly
+    # modify path to decoder.py and user/group accordingly
 sudo systemctl enable decoder.service
 sudo systemctl start decoder.service
 
@@ -99,5 +115,6 @@ check logfile with `sudo journalctl -u decoder.service`
 
 ## References
 
+- https://github.com/merbanan/rtl_433
 - https://github.com/merbanan/rtl_433/blob/master/src/devices/nexus.c
 - https://github.com/aquaticus/nexus433
