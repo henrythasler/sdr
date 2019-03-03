@@ -75,6 +75,7 @@ class Decoder(object):
         self.humidity = 0
         self.channel = 0
         self.battery_ok = False
+        self.newData = False
 
     def __enter__(self):
         """Class can be used in with-statement"""
@@ -130,6 +131,7 @@ class Decoder(object):
         self.channel = int((frame[1]&0x30) >> 4)
         self.battery_ok = int(frame[1]&0x80) == 0x80
         self.sensor_id = int(frame[0])
+        self.newData = True
         #print("Frame: "+''.join('{:02X} '.format(x) for x in frame) + " - ID={}  Channel={} Battery={}  {:.1f}°C  {:.0f}% rH".format(id, channel, battery, temperature, humidity))
 
     def run(self, glitch_filter=150, onDecode=None):
@@ -147,14 +149,17 @@ class Decoder(object):
 
         while 1:
             sleep(60)
-            # save to database every 60s
-            self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
-            self.pg_con.commit()
+            if self.newData:
+                # save to database every 60s
+                self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
+                self.pg_con.commit()
 
-            # publish values into MQTT topics
-            if self.onDecode:
-                self.onDecode("home/greenhouse/temp", '{0:0.1f}'.format(self.temperature))
-                self.onDecode("home/greenhouse/hum", '{0:0.0f}'.format(self.humidity))
+                # publish values into MQTT topics
+                if self.onDecode:
+                    self.onDecode("home/greenhouse/temp", '{0:0.1f}'.format(self.temperature))
+                    self.onDecode("home/greenhouse/hum", '{0:0.0f}'.format(self.humidity))
+                self.newData = False
+
             
 class Mqtt(object):
     def __init__(self, host="localhost", debug_level=SILENT):
@@ -211,8 +216,11 @@ def main():
         rf.write_single(0x01, 0b00010000)     # OpMode: SequencerOn, RX
 
         # wait until RFM-Module is ready
+        counter = 0
         while (rf.read_single(0x27) & 0x80) == 0:
-            print("waiting...")
+            counter = counter + 1
+            if counter > 100:
+                raise Exception("ERROR - Could not initialize RFM-Module")
 
         with Decoder(host="raspberrypi", debug_level=SILENT) as decoder:
             with Mqtt(host="osmc", debug_level=SILENT) as mqtt_client:
