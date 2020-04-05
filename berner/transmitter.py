@@ -13,7 +13,7 @@ RESET = 24
 DATA = 25
 
 # define pigpio-host 
-HOST = "rfpi"
+HOST = "localhost"
 
 def main(code):
     """ main function """

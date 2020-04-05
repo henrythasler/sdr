@@ -13,7 +13,7 @@ RESET = 24
 DATA = 25
 
 # define pigpio-host 
-HOST = "rfpi"
+HOST = "localhost"
 
 COMMANDS={
     'a_on': [0x19, 0x10, 0x0F, 0x09, 0x00],
@@ -49,7 +49,7 @@ def main(code):
         # just to make sure SPI is working
         rx_data = rf.read_single(0x5A)
         if rx_data != 0x55:
-            print "SPI Error"
+            print("SPI Error")
 
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
@@ -127,9 +127,9 @@ if __name__ == "__main__":
         if sys.argv[1] in COMMANDS:
             main(COMMANDS[sys.argv[1]])
         else:
-            print "Unknown command:", sys.argv[1]
+            print("Unknown command:", sys.argv[1])
     except KeyboardInterrupt:
-        print "KeyboardInterrupt"
+        print("KeyboardInterrupt")
         # just make sure we don't transmit forever
         pi = gpio.pi(host=HOST)
         pi.write(DATA, 0)
