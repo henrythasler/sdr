@@ -36,7 +36,7 @@ def main(code):
         # just to make sure SPI is working
         rx_data = rf.read_single(0x5A)
         if rx_data != 0x55:
-            print "SPI Error"
+            print("SPI Error")
 
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
@@ -118,11 +118,11 @@ if __name__ == "__main__":
     try:
         main(sys.argv[1:])
     except KeyboardInterrupt:
-        print "KeyboardInterrupt"
+        print("KeyboardInterrupt")
         # just make sure we don't transmit forever
         pi = gpio.pi(host=HOST)
         pi.write(DATA, 0)
         pi.stop()
     finally:
-        #print "done"
+        #print("done")
         pass
