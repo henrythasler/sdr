@@ -40,7 +40,7 @@ Symbol | Meaning | Comment
 `short` pulse followed by `very long` gap | inter-frame gap |
 `short` pulse followed by `very long` gap and a `short` pulse | end of transmission |
 
-Each transmission contains multiple (7) consecutive frames with the same content.
+Each transmission contains multiple (7) consecutive frames with the same content. Each frame contains 37 bits that can be decoded as follows:
 
 ![Decoding Rules](doc/baldr_decoding_rules.png)
 
