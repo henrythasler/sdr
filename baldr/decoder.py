@@ -59,14 +59,13 @@ class Decoder(object):
         self.active = False     # enables the decoder 
 
         # symbol parameters
-        self.pulse_short_µs = 500 #µs
-        self.gap_short_µs = 1000 #µs
-        self.gap_long_µs = 2000 #µs
-        self.gap_verylong_µs = 4000 #µs
-        self.symbol_tolerance_µs = 50 #µs
+        self.pulse_medium_gap_µs = 2650 #µs
+        self.pulse_long_gap_µs = 4700 #µs
+        self.pulse_verylong_gap_µs = 9600 #µs
+        self.symbol_tolerance_µs = 200 #µs
 
         # decoding variables
-        self.state = 0  # 0=idle; 1=frame
+        self.state = 0  # 0=idle; 1=frame;
         self.symbols = np.empty(0, dtype=np.uint8)
 
         # sensor data
@@ -75,6 +74,7 @@ class Decoder(object):
         self.humidity = 0
         self.channel = 0
         self.battery_ok = False
+        self.txMode = 0
         self.newData = False
 
     def __enter__(self):
@@ -101,20 +101,28 @@ class Decoder(object):
             delta = gpio.tickDiff(self.start_tick, tick)
             self.start_tick = tick
             # use frame-gap after 1st frame as trigger to scan the next frames; pulse + very long gap
-            if self.state == 0 and delta in range(4500-4*self.symbol_tolerance_µs, 4500+4*self.symbol_tolerance_µs):
+            if self.state == 0 and delta in range(self.pulse_verylong_gap_µs - self.symbol_tolerance_µs, self.pulse_verylong_gap_µs + self.symbol_tolerance_µs):
+                self.debug("Start of frame detected", TRACE)
                 self.state = 1
-            # pulse + long gap            
-            elif (self.state == 1) and delta in range(2500-2*self.symbol_tolerance_µs, 2500+2*self.symbol_tolerance_µs):
+            # pulse + long gap => 1           
+            elif (self.state == 1) and delta in range(self.pulse_long_gap_µs - self.symbol_tolerance_µs, self.pulse_long_gap_µs + self.symbol_tolerance_µs):
                 self.symbols = np.append(self.symbols, [1])
-            # pulse + short gap
-            elif (self.state == 1) and delta in range(1500-2*self.symbol_tolerance_µs, 1500+2*self.symbol_tolerance_µs):
+            # pulse + medium gap => 0
+            elif (self.state == 1) and delta in range(self.pulse_medium_gap_µs - self.symbol_tolerance_µs, self.pulse_medium_gap_µs + self.symbol_tolerance_µs):
                 self.symbols = np.append(self.symbols, [0])
+            elif (self.state == 1) and delta in range(self.pulse_verylong_gap_µs - self.symbol_tolerance_µs, self.pulse_verylong_gap_µs + self.symbol_tolerance_µs):
+                self.debug("End of Frame : " + str(self.symbols.size)+ " Bits received", TRACE)
+                if self.symbols.size == 37:
+                    self.state = 2  # all good
+                else:
+                    self.symbols = np.empty(0, dtype=np.uint8)
+                    self.state = 0
             else:
                 pass
-
         # Watchdog timeout
         elif (level == 2) and (self.state > 0):
-            if self.symbols.size == 36:
+            self.debug("End of Transmission: " + str(self.symbols.size) + " Bits received", TRACE)
+            if self.symbols.size == 37:
                 self.decode()
             else:
                 pass
@@ -126,23 +134,30 @@ class Decoder(object):
     def decode(self):
         """Actual decoder"""
         frame = np.packbits(self.symbols)
-        self.temperature = float(((frame[1]&0x0f) << 8 | frame[2])/10.)
-        self.humidity = int(((frame[3]&0x0f) << 4) + (frame[4]>>4))
-        self.channel = int((frame[1]&0x30) >> 4)
-        self.battery_ok = int(frame[1]&0x80) == 0x80
-        self.sensor_id = int(frame[0])
+
+        temp_raw = (frame[2] << 4) | (frame[3] >> 4)
+        # handle negative numbers
+        if temp_raw > 0x7ff:
+            temp_raw -= 2**12
+
+        # convert to actual temperature
+        self.temperature = float(temp_raw)/10.
+        self.humidity = int(((frame[3] & 0x07) << 4) | (frame[4] >> 4))
+        self.channel = int(frame[1] & 0x03)
+        self.txMode = int(frame[1] & 0x04)
+        self.sensor_id = int(((frame[0] & 0x0f) << 4) | (frame[1] >> 4))
         self.newData = True
-        #print("Frame: "+''.join('{:02X} '.format(x) for x in frame) + " - ID={}  Channel={} Battery={}  {:.1f}°C  {:.0f}% rH".format(id, channel, battery, temperature, humidity))
+        self.debug("Frame: "+''.join('{:02X} '.format(x) for x in frame) + " - ID={}  Channel={} txMode={}  {:.1f}°C  {:.0f}% rH".format(self.sensor_id, self.channel, self.txMode, self.temperature, self.humidity), TRACE)
 
     def run(self, glitch_filter=150, onDecode=None):
         # callback after successful decode
         self.onDecode=onDecode
 
         # filter high frequency noise
-        self.pi.set_glitch_filter(self.data_pin, 150)
+        self.pi.set_glitch_filter(self.data_pin, glitch_filter)
 
         # watchdog to detect end of frame
-        self.pi.set_watchdog(self.data_pin, 3)    # 3ms=3000µs
+        self.pi.set_watchdog(self.data_pin, 18)    # 18ms=18000µs
 
         # watch pin
         self.callback = self.pi.callback(self.data_pin, gpio.EITHER_EDGE, self.cbf)
@@ -150,9 +165,10 @@ class Decoder(object):
         while 1:
             sleep(60)
             if self.newData:
-                # save to database every 60s
-                self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
-                self.pg_con.commit()
+                pass
+                # # save to database every 60s
+                # self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
+                # self.pg_con.commit()
 
                 # publish values into MQTT topics
                 if self.onDecode:
@@ -222,10 +238,10 @@ def main():
             if counter > 100:
                 raise Exception("ERROR - Could not initialize RFM-Module")
 
-        with Decoder(host="localhost", debug_level=SILENT) as decoder:
-            with Mqtt(host="omv4.fritz.box", debug_level=SILENT) as mqtt_client:
+        with Decoder(host="localhost", debug_level=TRACE) as decoder:
+            with Mqtt(host="omv4", debug_level=TRACE) as mqtt_client:
                 try:
-                    decoder.run(glitch_filter=150, onDecode=mqtt_client.publish)
+                    decoder.run(glitch_filter=400, onDecode=mqtt_client.publish)
                 except KeyboardInterrupt:
                     print("cancel")
 
