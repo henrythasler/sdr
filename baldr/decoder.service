@@ -1,0 +1,19 @@
+# copy this file to /etc/systemd/system/
+# enable with: 
+#    sudo systemctl enable decoder.service
+#    sudo systemctl start decoder.service
+
+[Unit]
+Description=rfm69Decoder
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/henry/sdr/kwmobile/decoder.py
+RestartSec=30
+Restart=always
+User=henry
+Group=henry
+
+[Install]
+WantedBy=multi-user.target
