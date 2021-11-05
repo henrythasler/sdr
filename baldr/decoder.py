@@ -165,10 +165,9 @@ class Decoder(object):
         while 1:
             sleep(60)
             if self.newData:
-                pass
-                # # save to database every 60s
-                # self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
-                # self.pg_con.commit()
+                # save to database every 60s
+                self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
+                self.pg_con.commit()
 
                 # publish values into MQTT topics
                 if self.onDecode:
@@ -238,8 +237,8 @@ def main():
             if counter > 100:
                 raise Exception("ERROR - Could not initialize RFM-Module")
 
-        with Decoder(host="localhost", debug_level=TRACE) as decoder:
-            with Mqtt(host="omv4", debug_level=TRACE) as mqtt_client:
+        with Decoder(host="localhost", debug_level=SILENT) as decoder:
+            with Mqtt(host="omv4", debug_level=SILENT) as mqtt_client:
                 try:
                     decoder.run(glitch_filter=400, onDecode=mqtt_client.publish)
                 except KeyboardInterrupt:

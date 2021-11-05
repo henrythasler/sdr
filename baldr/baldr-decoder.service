@@ -1,7 +1,7 @@
 # copy this file to /etc/systemd/system/
 # enable with: 
-#    sudo systemctl enable decoder.service
-#    sudo systemctl start decoder.service
+#    sudo systemctl enable baldr-decoder.service
+#    sudo systemctl start baldr-decoder.service
 
 [Unit]
 Description=rfm69Decoder
@@ -9,7 +9,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/henry/sdr/kwmobile/decoder.py
+ExecStart=/usr/bin/python3 /home/henry/sdr/baldr/decoder.py
 RestartSec=30
 Restart=always
 User=henry
