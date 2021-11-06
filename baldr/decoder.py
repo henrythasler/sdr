@@ -10,7 +10,6 @@ import numpy as np
 
 from lib.rfm69 import Rfm69
 
-import psycopg2 as pg
 import paho.mqtt.client as mqtt
 
 SILENT = 0
@@ -44,13 +43,6 @@ class Decoder(object):
             exit()
         self.callback = None
 
-        self.pg_con = None
-        self.pg_cur = None   
-        try:
-            self.pg_con = pg.connect("dbname='home' user='postgres' host='omv4' password='postgres'")
-            self.pg_cur = self.pg_con.cursor()
-        except Exception as e:
-            print("Postgres Error {}:".format(e))        
 
         # initialize timestamp for further use
         self.start_tick = self.pi.get_current_tick()
@@ -165,10 +157,6 @@ class Decoder(object):
         while 1:
             sleep(60)
             if self.newData:
-                # save to database every 60s
-                self.pg_cur.execute("INSERT INTO greenhouse(timestamp, temperature, humidity, battery) VALUES(%s, %s, %s, %s)", (datetime.utcnow(), self.temperature, self.humidity, self.battery_ok))            
-                self.pg_con.commit()
-
                 # publish values into MQTT topics
                 if self.onDecode:
                     self.onDecode("home/greenhouse/temp", '{0:0.1f}'.format(self.temperature))
@@ -237,7 +225,7 @@ def main():
             if counter > 100:
                 raise Exception("ERROR - Could not initialize RFM-Module")
 
-        with Decoder(host="localhost", debug_level=SILENT) as decoder:
+        with Decoder(host="localhost", debug_level=TRACE) as decoder:
             with Mqtt(host="omv4", debug_level=SILENT) as mqtt_client:
                 try:
                     decoder.run(glitch_filter=400, onDecode=mqtt_client.publish)
