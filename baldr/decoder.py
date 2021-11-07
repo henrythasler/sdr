@@ -139,7 +139,7 @@ class Decoder(object):
         self.txMode = int(frame[1] & 0x04)
         self.sensor_id = int(((frame[0] & 0x0f) << 4) | (frame[1] >> 4))
         self.newData = True
-        self.debug("Frame: "+''.join('{:02X} '.format(x) for x in frame) + " - ID={}  Channel={} txMode={}  {:.1f}°C  {:.0f}% rH".format(self.sensor_id, self.channel, self.txMode, self.temperature, self.humidity), TRACE)
+        self.debug("{} Frame: ".format(datetime.now().isoformat(timespec='seconds')) + ''.join('{:02X} '.format(x) for x in frame) + " - ID={}  Channel={} txMode={}  {:.1f}°C  {:.0f}% rH".format(self.sensor_id, self.channel, self.txMode, self.temperature, self.humidity), INFO)
 
     def run(self, glitch_filter=150, onDecode=None):
         # callback after successful decode
@@ -225,7 +225,7 @@ def main():
             if counter > 100:
                 raise Exception("ERROR - Could not initialize RFM-Module")
 
-        with Decoder(host="localhost", debug_level=TRACE) as decoder:
+        with Decoder(host="localhost", debug_level=INFO) as decoder:
             with Mqtt(host="omv4", debug_level=SILENT) as mqtt_client:
                 try:
                     decoder.run(glitch_filter=400, onDecode=mqtt_client.publish)
