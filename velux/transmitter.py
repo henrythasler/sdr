@@ -40,10 +40,11 @@ def main(pin):
 if __name__ == "__main__":
     try:
         if len(sys.argv) >= 2:
-            if sys.argv[1] in COMMANDS:
-                main(COMMANDS[sys.argv[1]])
+            cmd = sys.argv[1].lower()
+            if cmd in COMMANDS:
+                main(COMMANDS[cmd])
             else:
-                print("Unknown command:", sys.argv[1])
+                print("Unknown command:", cmd)
         else:
             print("argument missing: open|close|down")
     except KeyboardInterrupt:
