@@ -32,7 +32,7 @@ class Rfm69(object):
     def debug(self, message, level=0):
         """Debug output depending on debug level."""
         if self.debug_level >= level:
-            print message
+            print(message)
 
     def read_single(self, address):
         """Read single register via spi"""
