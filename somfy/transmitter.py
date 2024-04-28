@@ -51,7 +51,7 @@ def main(code):
         try:
             config = json.load(f)
         except:
-            config = {"rolling_code": 0, "key": 10, "address": 1}
+            config = {"rolling_code": 1, "key": 160, "address": 1}
 
     # update config
     config["rolling_code"] += 1
