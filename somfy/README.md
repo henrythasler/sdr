@@ -7,7 +7,7 @@ Remote control for various home appliances.
 Item | Value | Description
 -------------: | ------------- | :-------------
 Frequency  | 433.42 MHz |
-Symbol-rate | 775 Hz
+Symbol-rate | 775 Bd
 Encoding | Manchester | rising edge = 1, falling edge = 0
 
 ## Signal Charactersistics

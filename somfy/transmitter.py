@@ -47,11 +47,11 @@ def main(code):
     sleep(.005)
 
     # load current config
-    with open("config.json") as f:
-        try:
+    try:
+        with open("config.json") as f:
             config = json.load(f)
-        except:
-            config = {"rolling_code": 1, "key": 160, "address": 1}
+    except:
+        config = {"rolling_code": 1, "key": 160, "address": 1}
 
     # update config
     config["rolling_code"] += 1
@@ -64,7 +64,7 @@ def main(code):
 
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
-        rf.write_burst(0x07, [0x6C, 0x9A, 0x00]) # Frf: Carrier Frequency 434.42MHz
+        rf.write_burst(0x07, [0x6C, 0x9A, 0x00]) # Frf: Carrier Frequency 434.42 MHz
 
         # Use PA_BOOST
         rf.write_single(0x13, 0x0F)
@@ -88,15 +88,20 @@ def main(code):
         pi.wave_clear()
 
         # calculate frame-data from command-line arguments
+        print("key: 0x{:02X}, ctrl: 0x{:02X}, rolling code: 0x{:02X}, address: 0x{:02X}".format(config["key"], code, config["rolling_code"], config["address"]))
+
         data = pack(">BBH", config["key"] | (config["rolling_code"] & 0x0f), code << 4, config["rolling_code"])
         data += pack("<I",config["address"])[:-1]
-        frame = np.fromstring(data, dtype=np.uint8)
+        frame = np.frombuffer(bytearray(data), dtype=np.uint8)
 
         # checksum calculation
-        cksum = frame[0] ^ (frame[0] >> 4)
-        for i in range(1,7):
+        cksum = 0
+        for i in range(0,7):
             cksum = cksum ^ frame[i] ^ (frame[i] >> 4)
-        frame[1] = frame[1] | (cksum & 0x0f)
+        cksum = cksum & 0xf
+        print("cksum: {}".format(cksum))
+
+        frame[1] = frame[1] | cksum
         print("Data: "+''.join('0x{:02X} '.format(x) for x in frame))
 
         # data whitening/obfuscation
@@ -106,7 +111,7 @@ def main(code):
         print("Frame: "+''.join('0x{:02X} '.format(x) for x in frame))
 
         # how many consecutive frame repetitions (besides the one that is transmitted anyway); set to 0 for no repetitions
-        repetitions = 16 if code == COMMANDS["PROG"] else 3
+        repetitions = 20 if code == COMMANDS["prog"] else 4
 
         # create wakeup pulse waveform
         pi.wave_add_generic([gpio.pulse(1<<DATA, 0, 10000), gpio.pulse(0, 1<<DATA, 95000)])
@@ -157,7 +162,6 @@ def main(code):
                     [gap],   # inter-frame gap
                 [255, 1, repetitions, 0]    # repeat
                 ))
-
         # send frames
         pi.wave_chain(frames.tolist())
 
