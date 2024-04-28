@@ -6,15 +6,15 @@ from time import sleep
 import pigpio as gpio
 from lib.rfm69 import Rfm69
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+#import matplotlib.pyplot as plt
+#from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # define pigpio GPIO-pins where RESET- and DATA-Pin of RFM69-Transceiver are connected
 RESET = 24
 DATA = 25
 
 # define pigpio-host
-HOST = "rfpi"
+HOST = "localhost"
 
 start_tick = 0
 state = 0 # 0=Idle, 1=Frame
@@ -68,7 +68,7 @@ def cbf(pin, level, tick):
         # start of frame mark
         elif (state == 2) and (delta in range(4850-2*tolerance, 4850+2*tolerance)):
             clock = int(np.average(hw_sync)/4)
-            print "Clock Sync:", hw_sync, clock
+            print("Clock Sync:", hw_sync, clock)
             bits = np.empty(0, dtype=np.uint8)
             state = 3
         # long pulse
@@ -96,7 +96,7 @@ def cbf(pin, level, tick):
             histogram[0] += 1
 
             frame = np.packbits(decoded)
-            print "Raw: "+''.join('0x{:02X} '.format(x) for x in frame)
+            print("Raw: "+''.join('0x{:02X} '.format(x) for x in frame))
 
             for i in range(frame.size-1, 0, -1):
                 frame[i] = frame[i] ^ frame[i-1]
@@ -106,11 +106,11 @@ def cbf(pin, level, tick):
                 cksum = cksum ^ frame[i] ^ (frame[i] >> 4)
             cksum = cksum & 0x0f
             
-            print "Frame: "+''.join('0x{:02X} '.format(x) for x in frame)
-            print "    Control: 0x{:02X}".format((frame[1] >> 4) & 0x0f)
-            print "    Checksum: {}".format("ok" if cksum==0 else "error")
-            print "    Address: "+''.join('{:02X} '.format(x) for x in frame[4:7])
-            print "    Rolling Code: "+''.join('{:02X} '.format(x) for x in frame[2:4])
+            print("Frame: "+''.join('0x{:02X} '.format(x) for x in frame))
+            print("    Control: 0x{:02X}".format((frame[1] >> 4) & 0x0f))
+            print("    Checksum: {}".format("ok" if cksum==0 else "error"))
+            print("    Address: "+''.join('{:02X} '.format(x) for x in frame[4:7]))
+            print("    Rolling Code: "+''.join('{:02X} '.format(x) for x in frame[2:4]))
         else:
             pass
         bits = np.empty(0, dtype=np.uint8)
@@ -136,7 +136,7 @@ def main():
         # just to make sure SPI is working
         rx_data = rf.read_single(0x5A)
         if rx_data != 0x55:
-            print "SPI Error"
+            print("SPI Error")
 
         # configure
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
@@ -158,7 +158,7 @@ def main():
 
         # wait until RFM-Module is ready
         while (rf.read_single(0x27) & 0x80) == 0:
-            print "waiting..."
+            print("waiting...")
 
         # filter high frequency noise
         pi.set_glitch_filter(DATA, 150)
@@ -169,7 +169,7 @@ def main():
         # watch DATA pin
         callback = pi.callback(DATA, gpio.EITHER_EDGE, cbf)
 
-        print "Scanning... Press Ctrl-C to abort"
+        print("Scanning... Press Ctrl-C to abort")
         while 1:
             sleep(1)
 
@@ -188,8 +188,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print ""
+        print("")
     finally:
-        print "done"
-        if histogram[0] > 0:
-            show_histogram(np.reshape(histogram[1], (-1, 8)), normalize=histogram[0])
+        print("done")
+#        if histogram[0] > 0:
+#            show_histogram(np.reshape(histogram[1], (-1, 8)), normalize=histogram[0])

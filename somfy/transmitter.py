@@ -14,8 +14,8 @@ import json
 RESET = 24
 DATA = 25
 
-# define pigpio-host 
-HOST = "rfpi"
+# define pigpio-host
+HOST = "localhost"
 
 COMMANDS={
     'null': 0x00,
@@ -27,7 +27,7 @@ COMMANDS={
 
 config=None
 
-clock = 640    
+clock = 640
 
 def main(code):
     """ main function """
@@ -56,15 +56,11 @@ def main(code):
     # update config
     config["rolling_code"] += 1
 
-    # write new config
-    with open("config.json", "w") as f:
-        json.dump(config, f)
-
     with Rfm69(host=HOST, channel=0, baudrate=32000, debug_level=0) as rf:
         # just to make sure SPI is working
         rx_data = rf.read_single(0x5A)
         if rx_data != 0x55:
-            print "SPI Error"
+            print("SPI Error")
 
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
@@ -92,7 +88,7 @@ def main(code):
         pi.wave_clear()
 
         # calculate frame-data from command-line arguments
-        data = pack(">BBH", config["key"] | (config["rolling_code"] & 0x0f), code << 4, config["rolling_code"]) 
+        data = pack(">BBH", config["key"] | (config["rolling_code"] & 0x0f), code << 4, config["rolling_code"])
         data += pack("<I",config["address"])[:-1]
         frame = np.fromstring(data, dtype=np.uint8)
 
@@ -101,16 +97,16 @@ def main(code):
         for i in range(1,7):
             cksum = cksum ^ frame[i] ^ (frame[i] >> 4)
         frame[1] = frame[1] | (cksum & 0x0f)
-        print "Data: "+''.join('0x{:02X} '.format(x) for x in frame)
+        print("Data: "+''.join('0x{:02X} '.format(x) for x in frame))
 
         # data whitening/obfuscation
         for i in range(1, frame.size):
             frame[i] = frame[i] ^ frame[i-1]
 
-        print "Frame: "+''.join('0x{:02X} '.format(x) for x in frame)
+        print("Frame: "+''.join('0x{:02X} '.format(x) for x in frame))
 
-        # how many consecutive frame repetitions
-        repetitions = 3
+        # how many consecutive frame repetitions (besides the one that is transmitted anyway); set to 0 for no repetitions
+        repetitions = 16 if code == COMMANDS["PROG"] else 3
 
         # create wakeup pulse waveform
         pi.wave_add_generic([gpio.pulse(1<<DATA, 0, 10000), gpio.pulse(0, 1<<DATA, 95000)])
@@ -145,21 +141,21 @@ def main(code):
 
         # assemble whole frame sequence
         frames = np.concatenate((
-                [wakeup], 
-                [hw_sync, hw_sync], 
-                [sw_sync], 
+                [wakeup],
+                [hw_sync, hw_sync],
+                [sw_sync],
                 bits,                   # send at least once
-                [eof],                  # start 
+                [eof],                  # start
                 [gap],   # inter-frame gap
                 [255, 0],               # start loop
-                    [255, 0], 
-                        [hw_sync], 
+                    [255, 0],
+                        [hw_sync],
                     [255, 1, 7, 0],
-                    [sw_sync], 
-                    bits, 
-                    [eof], 
+                    [sw_sync],
+                    bits,
+                    [eof],
                     [gap],   # inter-frame gap
-                [255, 1, repetitions, 0]    # repeat 
+                [255, 1, repetitions, 0]    # repeat
                 ))
 
         # send frames
@@ -184,14 +180,18 @@ def main(code):
     sleep(.005)
     pi.stop()
 
+    # write new config
+    with open("config.json", "w") as f:
+        json.dump(config, f)
+
 if __name__ == "__main__":
     try:
         if sys.argv[1] in COMMANDS:
             main(COMMANDS[sys.argv[1]])
         else:
-            print "Unknown command:", sys.argv[1]
+            print("Unknown command:", sys.argv[1])
     except KeyboardInterrupt:
-        print "KeyboardInterrupt"
+        print("KeyboardInterrupt")
         # just make sure we don't transmit forever
         pi = gpio.pi(host=HOST)
         pi.write(DATA, 0)
