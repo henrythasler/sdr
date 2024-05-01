@@ -16,8 +16,13 @@ Based on pigpiod. see [transmitter.py](./transmitter.py).
 
 The [transmitter.py](./transmitter.py) is executed inside a node-red flow.
 
+## Radio Protocol Decoding
+
+see `decoder.py`
+
 ## References
 
 - [yannikmotzet: VELUX INTEGRA® Control](https://github.com/yannikmotzet/velux-integra-control)
 - [thorio: ESPHome Velux Controller](https://github.com/thorio/esphome-projects/tree/master/velux-controller)
 - [ottelo: Velux Integra Dachfenster Rollladen - ESP8266 (KLI 310)](https://ottelo.jimdofree.com/velux-integra-esp8266/)
+- [iown-homecontrol](https://github.com/Velocet/iown-homecontrol)
