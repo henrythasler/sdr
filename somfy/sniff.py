@@ -141,7 +141,7 @@ def main():
         # configure
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
-        rf.write_burst(0x07, [0x6C, 0x9A, 0x00]) # Frf: Carrier Frequency 434.42MHz/61.035 
+        rf.write_burst(0x07, [0x6C, 0x5A, 0xE1]) # Frf: Carrier Frequency 433.42MHz/61.035 
 
 #        rf.write_single(0x18, 0b00000000)     # Lna: 50 Ohm, auto gain
 

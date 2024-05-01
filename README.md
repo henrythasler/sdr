@@ -23,8 +23,8 @@ If you want to spend more money you might go for a [HackRF One](https://greatsco
 
 ## Software (Linux)
 
+* [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus)
 * [inspectrum](https://github.com/miek/inspectrum)
-* [CubicSDR](http://cubicsdr.com/)
 * [baudline](http://baudline.com/index.html)
 
 ## References

@@ -40,6 +40,23 @@ The RFM69 Data-Pin looks like this:
 
 ## Transmission
 
+To set up your own transmitter, follow the pairing-process as follows:
+
+1. optional: create and adapt `config.json` to set a custom address for the new transmitter
+2. long-press the PROG-button on a paired remote until the device (e.g. a shade) jogs
+3. transmit the `prog` command with `transmitter.py`. The device will jog again indicating that a new transmitter is paired
+4. send regular commands
+
+```bash
+$ sudo python3 transmitter.py down
+key: 0xA0, ctrl: 0x04, rolling code: 0x03, address: 0x365240
+cksum: 8
+Data: 0xA3 0x48 0x00 0x03 0x40 0x52 0x36 
+Frame: 0xA3 0xEB 0xEB 0xE8 0xA8 0xFA 0xCC
+```
+
+The rolling code automatically incremented and saved to `config.json`.
+
 ## References
 
 * https://www.somfy.de/produkte/1810630/telis-1-rts-

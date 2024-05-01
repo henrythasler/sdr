@@ -64,7 +64,10 @@ def main(code):
 
         rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
-        rf.write_burst(0x07, [0x6C, 0x9A, 0x00]) # Frf: Carrier Frequency 434.42 MHz
+        freq = 433_420_000 # 433.42 MHz
+        f_step = 32_000_000 / 2**19    # 32 MHz XO
+        reg_frf = int(freq / f_step)
+        rf.write_burst(0x07, [(reg_frf>>16) & 0xff, (reg_frf>>8) & 0xff, (reg_frf) & 0xff]) # Frf: Carrier Frequency 
 
         # Use PA_BOOST
         rf.write_single(0x13, 0x0F)
@@ -110,8 +113,8 @@ def main(code):
 
         print("Frame: "+''.join('0x{:02X} '.format(x) for x in frame))
 
-        # how many consecutive frame repetitions (besides the one that is transmitted anyway); set to 0 for no repetitions
-        repetitions = 20 if code == COMMANDS["prog"] else 4
+        # how many consecutive frame repetitions (besides the one that is transmitted anyway); set to 0 for no repetitions; increase for robustness
+        repetitions = 16 if code == COMMANDS["prog"] else 0
 
         # create wakeup pulse waveform
         pi.wave_add_generic([gpio.pulse(1<<DATA, 0, 10000), gpio.pulse(0, 1<<DATA, 95000)])
