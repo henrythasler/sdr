@@ -55,12 +55,12 @@ Data: 0xA3 0x48 0x00 0x03 0x40 0x52 0x36
 Frame: 0xA3 0xEB 0xEB 0xE8 0xA8 0xFA 0xCC
 ```
 
-The rolling code automatically incremented and saved to `config.json`.
+The rolling code is automatically incremented and saved to `config.json`.
 
 ## References
 
 * https://www.somfy.de/produkte/1810630/telis-1-rts-
 * [Somfy Smoove Origin RTS Protocol](https://pushstack.wordpress.com/somfy-rts-protocol/)
 * [NodeMCU Somfy module](https://nodemcu.readthedocs.io/en/master/en/modules/somfy/)
-* [QUICK PROGRAMMING GUIDE FOR ALL RTS MOTORS](http://www.automatedshadeinc.com/files/motors/all-somfy-rts%20motors-programming-quick-guide-02-09.pdf)
+* [Quick Programming Guide for all Somfy® RTS Motors](https://www.thejustdesigngroup.net/automatedshade/documents/RTS%20Quick%20Programming%20Guide.pdf)
 

@@ -9,6 +9,7 @@ import pigpio as gpio
 from lib.rfm69 import Rfm69
 import numpy as np
 import json
+import os
 
 # define pigpio GPIO-pins where RESET- and DATA-Pin of RFM69-Transceiver are connected
 RESET = 24
@@ -19,15 +20,20 @@ HOST = "localhost"
 
 COMMANDS={
     'null': 0x00,
-    'up': 0x02,
-    'down': 0x04,
     'stop': 0x01,
-    'prog': 0x08,
+    'STOP': 0x01,   # alias for home-automation
+    'up': 0x02,
+    'CLOSE': 0x02,  # alias for home-automation
+    'down': 0x04,
+    'OPEN': 0x04,   # alias for home-automation
+    'prog': 0x08,   # USE WITH CARE
     }
 
 config=None
 
 clock = 640
+
+config_file = os.path.join(os.path.dirname(__file__), "config.json")
 
 def main(code):
     """ main function """
@@ -48,7 +54,7 @@ def main(code):
 
     # load current config
     try:
-        with open("config.json") as f:
+        with open(config_file) as f:
             config = json.load(f)
     except:
         config = {"rolling_code": 1, "key": 160, "address": 1}
@@ -188,7 +194,7 @@ def main(code):
     pi.stop()
 
     # write new config
-    with open("config.json", "w") as f:
+    with open(config_file, "w") as f:
         json.dump(config, f)
 
 if __name__ == "__main__":
