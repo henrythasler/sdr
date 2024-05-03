@@ -4,38 +4,45 @@
 
 from struct import unpack
 import numpy as np
+from bitarray import bitarray
 
 # raw bits incl. preamble and start/stop bit extracted via inspectrum from a transmission captured via rtl_sdr
-packet = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0]
-packet_str = ''.join(str(x) for x in packet)
+sample = bitarray([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0])
+# print(sample)
 
-# 
-preamble_bytes = [0xff, 0x33]
-preamble_end_pattern = f'0{preamble_bytes[0]:0<8b}10{preamble_bytes[1]:0<8b}1'  # https://www.pythonmorsels.com/string-formatting/
-preamble_end = packet_str.find(preamble_end_pattern)
-print("preamble ends at bit {}".format(preamble_end))
+preamble = bitarray("0 11111111 1 0 11001100 1")  # [0xff, 0x33] plus start/stop bits
 
-# strip start and stop bits
-raw = np.array(packet[preamble_end + len(preamble_end_pattern):], dtype=np.uint8)
-print(raw[0:32])
-#print(np.arange(0, np.shape(raw)[0], 9))
-#print(np.arange(8, np.shape(raw)[0], 8))
-raw = np.delete(raw, np.arange(0, np.shape(raw)[0], 10))
-print(raw[0:32])
-raw = np.delete(raw, np.arange(8, np.shape(raw)[0], 9))
-print(raw[0:32])
+preamble_start = sample.index(preamble)
+print("preamble begins at bit {}".format(preamble_start))
+packet = sample[preamble_start:]
 
-print(raw[0:8])
-print(raw[7::-1])
-payload_length = np.packbits(raw[7::-1])[0] & 0x1f     #  10110=22
-print("payload_length={} ({:08b}b) ({} bits)".format(payload_length, payload_length, payload_length * 8))
+#remove start bits
+del packet[0:len(packet):10]
+#remove stop bits
+del packet[8:len(packet):9]
 
-print(np.shape(raw))
+# LSB is sent first, so we need to reverse it here
+packet.bytereverse()
 
-crc16 = np.packbits(raw[8+payload_length+16:8+payload_length:-1])[0]
-print(crc16)
+# deserialize bits into actual bytes
+frame = packet.tobytes()
 
-#raw = raw[].reshape((-1, 8))
-#print(raw)
+print("Packet: {}".format(frame.hex(' ')))
 
-# message = 
+# separate message from meta-information
+message_length = frame[2] & 0x1f
+crc16 = unpack('>H', frame[3 + message_length: 3 + message_length + 2])[0]
+message = frame[3:3 + message_length]
+print("    Payload Length: {} bytes ({:08b}b) ({} bits)".format(message_length, message_length, message_length * 8))
+print("    CRC16: 0x{:04X} ({:08b}b)".format(crc16, crc16))
+
+print("Message: {}".format(message.hex(' ')))
+# deserialize message-content
+destination, source, payload, counter, mac1, mac2 = unpack('>II{}sHHI'.format(message_length-16),message)
+mac = (mac1 << 32) + mac2
+
+print("    Source-Address: 0x{:02X}".format(source))
+print("    Target-Address: 0x{:02X}".format(destination))
+print("    Payload: {}".format(payload.hex(' ')))
+print("    Counter: 0x{:02X} ({})".format(counter, counter))
+print("    MAC: 0x{:06X}".format(mac))
