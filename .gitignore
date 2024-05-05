@@ -8,6 +8,7 @@ top_block.py
 *.cu8
 *.fc32
 *.pyc
+*.bin
 
 blocks/gr-bitmap/build/
 

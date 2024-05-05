@@ -11,6 +11,7 @@ from bitstring import Bits, BitArray
 terminology according to https://dev.to/stungnet/from-data-to-frame-the-evolution-of-pdus-across-the-osi-model-21gd
 """
 
+OUTPUT_FILENAME = "sample.bin"
 
 # raw bits incl. preamble, SOF and start/stop bit extracted via inspectrum from a transmission captured via rtl_sdr
 # bits = bitarray([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0])
@@ -44,20 +45,25 @@ for i in range(0, len(frame) - 8, 8):
 
 # by now it's a packet
 packet = frame
-print("\r\nPacket: {}".format(packet.tobytes().hex(" ")))
 
 # separate message from meta-information
 _, control1, _ = packet.unpack("uint:16, uint:8, bin")
 payload_length = control1 & 0x1F
 
+# strip trailing noise
+packet = packet[: (3 + payload_length + 2) * 8]
+
+print("\r\nPacket: {}".format(packet.tobytes().hex(" ")))
+
 _, crc16 = packet.unpack("bytes:{}, uintle:16".format(3 + payload_length))
 crc_calc = Calculator(Crc16.KERMIT).checksum(packet.tobytes()[2 : 3 + payload_length])
-payload = packet[3 * 8 : 3 * 8 + payload_length * 8]    # strip SFD and control1
+payload = packet[3 * 8 : (3 + payload_length) * 8]    # strip SFD and control1
 print(
     "    Payload Length: {} bytes (0x{:02X}, {:08b}b), {} bits)".format(
         payload_length, payload_length, payload_length, payload_length * 8
     )
 )
+print("    Control1: 0x{:02x} (0b{:08b})".format(control1 & ~0x1f, control1 & ~0x1f))
 print(
     "    CRC16: {} (0x{:04x})".format(
         (
@@ -69,6 +75,10 @@ print(
     )
 )
 
+with open(OUTPUT_FILENAME, "wb") as file:
+    file.write(packet.tobytes())
+    print("Packet saved to '{}'".format(OUTPUT_FILENAME))
+
 print("\r\nMessage: {}".format(payload.tobytes().hex(" ")))
 # deserialize message-content
 control2, destination, source, command, payload, counter, mac = payload.unpack(
@@ -77,7 +87,6 @@ control2, destination, source, command, payload, counter, mac = payload.unpack(
     )
 )
 
-print("    Control1: 0x{:02x} (0b{:08b})".format(control1 & ~0x1f, control1 & ~0x1f))
 print("    Control2: 0x{:02x} (0b{:08b})".format(control2, control2))
 print("    Source Node-ID: 0x{:06x}".format(source))
 print("    Target Node-ID: 0x{:06x}".format(destination))
