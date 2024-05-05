@@ -2,16 +2,10 @@
 # -*- coding: utf-8 -*-
 """Decode Symbols"""
 
-"""
-pip install crc bitarray
-"""
-
-# from struct import unpack
+# pip install crc bitstring
 import numpy as np
-
-# from bitarray import bitarray
 from crc import Calculator, Crc16
-import bitstring
+from bitstring import Bits, BitArray
 
 """
 terminology according to https://dev.to/stungnet/from-data-to-frame-the-evolution-of-pdus-across-the-osi-model-21gd
@@ -25,18 +19,19 @@ terminology according to https://dev.to/stungnet/from-data-to-frame-the-evolutio
 f6 00 00 00 3f da 2c 93 00 01 61 d2 00 00 00 04 76 23 14 50 08 11 50 c8 97
 Dest ID   : 3f000000     Msg type  : f6            Message   : 0161d2000000  Counter   : 1142          MAC       : 231450081150
 """
-bits = bitstring.Bits([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1])
+bits = Bits([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1])
 
 # need to find the frame within raw input bits
-frame_start = bits.find(bitstring.Bits(bin="0 11111111 1 0 11001100 1".replace(" ", ""))) # [0xff, 0x33] plus start/stop bits
+frame_start = bits.find(Bits(bin="0 11111111 1 0 11001100 1".replace(" ", ""))) # [0xff, 0x33] plus start/stop bits
 
 if not frame_start:
+    print("Received {} Bits but no Frame detected!".format(len(bits)))
     exit()
 
 frame_start = frame_start[0]
 
-print("Received {} bits. Frame begins at bit {}".format(len(bits), frame_start))
-frame = bitstring.BitArray(bits[frame_start:])
+print("Received {} bits. Frame begins at bit {}.".format(len(bits), frame_start))
+frame = BitArray(bits[frame_start:])
 
 # remove start bits
 del frame[0 : len(frame) : 10]
@@ -64,11 +59,11 @@ print(
     )
 )
 print(
-    "    CRC16: {} (0x{:04X})".format(
+    "    CRC16: {} (0x{:04x})".format(
         (
             "OK"
             if crc_calc == crc16
-            else "ERROR, expected 0x{:04X} but received".format(crc_calc)
+            else "ERROR, expected 0x{:04x} but received".format(crc_calc)
         ),
         crc16,
     )
@@ -82,11 +77,11 @@ control2, destination, source, command, payload, counter, mac = payload.unpack(
     )
 )
 
-print("    Control1: 0x{:02X} (0b{:08b})".format(control1 & ~0x1f, control1 & ~0x1f))
-print("    Control2: 0x{:02X} (0b{:08b})".format(control2, control2))
-print("    Source Node-ID: 0x{:06X}".format(source))
-print("    Target Node-ID: 0x{:06X}".format(destination))
-print("    Command: 0x{:02X}".format(command))
+print("    Control1: 0x{:02x} (0b{:08b})".format(control1 & ~0x1f, control1 & ~0x1f))
+print("    Control2: 0x{:02x} (0b{:08b})".format(control2, control2))
+print("    Source Node-ID: 0x{:06x}".format(source))
+print("    Target Node-ID: 0x{:06x}".format(destination))
+print("    Command: 0x{:02x}".format(command))
 print("    Payload: {}".format(payload.hex(" ")))
-print("    Counter: 0x{:04X} ({})".format(counter, counter))
-print("    MAC: 0x{:012X}".format(mac))
+print("    Counter: 0x{:04x} ({})".format(counter, counter))
+print("    MAC: 0x{:012x}".format(mac))
