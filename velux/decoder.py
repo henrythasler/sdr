@@ -57,7 +57,7 @@ print("\r\nPacket: {}".format(packet.tobytes().hex(" ")))
 
 _, crc16 = packet.unpack("bytes:{}, uintle:16".format(3 + payload_length))
 crc_calc = Calculator(Crc16.KERMIT).checksum(packet.tobytes()[2 : 3 + payload_length])
-payload = packet[3 * 8 : (3 + payload_length) * 8]    # strip SFD and control1
+message = packet[3 * 8 : (3 + payload_length) * 8]    # strip SFD and control1
 print(
     "    Payload Length: {} bytes (0x{:02X}, {:08b}b), {} bits)".format(
         payload_length, payload_length, payload_length, payload_length * 8
@@ -79,9 +79,9 @@ with open(OUTPUT_FILENAME, "wb") as file:
     file.write(packet.tobytes())
     print("Packet saved to '{}'".format(OUTPUT_FILENAME))
 
-print("\r\nMessage: {}".format(payload.tobytes().hex(" ")))
+print("\r\nMessage: {}".format(message.tobytes().hex(" ")))
 # deserialize message-content
-control2, destination, source, command, payload, counter, mac = payload.unpack(
+control2, destination, source, command, payload, counter, mac = message.unpack(
     "uint:8, uint:24, uint:24, uint:8, bytes:{}, uint:16, uint:48".format(
         payload_length - 16
     )

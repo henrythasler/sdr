@@ -1,33 +1,55 @@
 meta:
   id: iohc
-  endian: le
+  endian: be
 seq:
   - id: sfd
     contents: [0xFF, 0x33]
   - id: control1
-    type: u1
+    type: control1
   - id: control2
+    type: control2
+  - id: target_id
+    type: b24
+  - id: source_id
+    type: b24
+  - id: command
     type: u1
+    enum: command
+  - id: payload
+    size: control1.payload_length - 16
+  - id: counter
+    type: u2
+  - id: mac
+    size: 6
+  - id: crc16
+    type: u2le
 
-instances:
-  order:
-    value: (control1 & 0b11000000) >> 6
-    enum: order    
-  mode:
-    value: (control1 & 0b00100000) >> 5
-    enum: mode
-  payload_length:
-    value:  control1 & 0b00011111
-  use_beacon:
-    value: (control2 & 0b10000000) >> 7
-  routed:
-    value: (control2 & 0b01000000) >> 6
-  low_power_mode:
-    value: (control2 & 0b00100000) >> 5
-  ack:
-    value: (control2 & 0b00010000) >> 4
-  protocol_version:
-    value: control2 & 0b00000011
+types:
+  control1:
+    seq:
+    - id: order
+      type: b2
+      enum: order    
+    - id: mode
+      type: b1
+      enum: mode
+    - id: payload_length
+      type: b5
+  control2:
+    doc: Extended Frame Information
+    seq:
+    - id: use_beacon
+      type: b1
+    - id: routed
+      type: b1
+    - id: low_power_mode
+      type: b1
+    - id: ack
+      type: b1
+    - id: unknown
+      type: b2
+    - id: protocol_version
+      type: b2
 
 enums:
   order:
@@ -38,3 +60,5 @@ enums:
   mode:
     0: two_way
     1: one_way
+  command:
+    0: execute_function
