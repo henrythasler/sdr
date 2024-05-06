@@ -9,6 +9,11 @@ from bitstring import Bits, BitArray
 
 """
 terminology according to https://dev.to/stungnet/from-data-to-frame-the-evolution-of-pdus-across-the-osi-model-21gd
+bits = data representation on the physical layer including sync-data, preamble, noise, ...
+frame = Data Link Layer; UART-encoding; w/o physical-layer specific add-ons
+packet = Network Layer; plain bytes representation of the actual data
+message = Presentation/Session Layer
+payload = Application Layer 
 """
 
 OUTPUT_FILENAME = "sample.bin"
@@ -48,19 +53,19 @@ packet = frame
 
 # separate message from meta-information
 _, control1, _ = packet.unpack("uint:16, uint:8, bin")
-payload_length = control1 & 0x1F
+message_length = control1 & 0x1F
 
 # strip trailing noise
-packet = packet[: (3 + payload_length + 2) * 8]
+packet = packet[: (3 + message_length + 2) * 8]
 
 print("\r\nPacket: {}".format(packet.tobytes().hex(" ")))
 
-_, crc16 = packet.unpack("bytes:{}, uintle:16".format(3 + payload_length))
-crc_calc = Calculator(Crc16.KERMIT).checksum(packet.tobytes()[2 : 3 + payload_length])
-message = packet[3 * 8 : (3 + payload_length) * 8]    # strip SFD and control1
+_, crc16 = packet.unpack("bytes:{}, uintle:16".format(3 + message_length))
+crc_calc = Calculator(Crc16.KERMIT).checksum(packet.tobytes()[2 : 3 + message_length])
+message = packet[3 * 8 : (3 + message_length) * 8]    # strip SFD and control1
 print(
     "    Payload Length: {} bytes (0x{:02X}, {:08b}b), {} bits)".format(
-        payload_length, payload_length, payload_length, payload_length * 8
+        message_length, message_length, message_length, message_length * 8
     )
 )
 print("    Control1: 0x{:02x} (0b{:08b})".format(control1 & ~0x1f, control1 & ~0x1f))
@@ -83,7 +88,7 @@ print("\r\nMessage: {}".format(message.tobytes().hex(" ")))
 # deserialize message-content
 control2, destination, source, command, payload, counter, mac = message.unpack(
     "uint:8, uint:24, uint:24, uint:8, bytes:{}, uint:16, uint:48".format(
-        payload_length - 16
+        message_length - 16
     )
 )
 
