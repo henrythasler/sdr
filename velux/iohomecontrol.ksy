@@ -1,15 +1,15 @@
 meta:
-  id: io-homecontrol
+  id: iohomecontrol
   title: io-homecontrol packet
   license: CC0-1.0
   endian: be
-  doc: |
-    describes a io-homecontrol packet (Layer 3; Network)
-    It starts with the SFD (Start Frame Delimiter) and end with the checksum (CRC-16)
-    The encoding is big-endian (except the 16-bit checksum)
-    example: ff 33 f8 00 00 00 7f 70 87 58 00 01 61 d4 00 80 c8 00 00 3b d5 05 52 68 75 49 9c 7e 72
-             |___|       |______| |______|                            |___|                   |___|
-              SFD         target   source                            counter                   crc
+doc: |
+  describes a io-homecontrol packet (Layer 3; Network)
+  It starts with the SFD (Start Frame Delimiter) and ends with a checksum (CRC-16)
+  The encoding is big-endian (except the 16-bit checksum)
+  example: ff 33 f8 00 00 00 7f 70 87 58 00 01 61 d4 00 80 c8 00 00 3b d5 05 52 68 75 49 9c 7e 72
+           |___|       |______| |______|                            |___|                   |___|
+            SFD         target   source                            counter                   crc
 seq:
   - id: sfd
     doc: Start Frame Delimiter
@@ -41,7 +41,7 @@ types:
     seq:
     - id: order
       type: b2
-      enum: order    
+      enum: order
     - id: mode
       type: b1
       enum: mode
@@ -67,7 +67,7 @@ enums:
   order:
     0: single
     1: next_in_series
-    2: next_in_parallel 
+    2: next_in_parallel
     3: command_group_end
   mode:
     0: two_way
