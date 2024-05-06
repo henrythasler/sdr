@@ -1,5 +1,7 @@
 meta:
-  id: iohc
+  id: io-homecontrol
+  title: io-homecontrol packet
+  license: CC0-1.0
   endian: be
   doc: |
     describes a io-homecontrol packet (Layer 3; Network)
