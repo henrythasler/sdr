@@ -10,6 +10,7 @@ doc: |
   example: ff 33 f8 00 00 00 7f 70 87 58 00 01 61 d4 00 80 c8 00 00 3b d5 05 52 68 75 49 9c 7e 72
            |___|       |______| |______|                            |___|                   |___|
             SFD         target   source                            counter                   crc
+  Compile with `kaitai-struct-compiler -t python iohomecontrol.ksy`
 seq:
   - id: sfd
     doc: Start Frame Delimiter

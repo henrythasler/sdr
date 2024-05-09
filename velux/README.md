@@ -20,6 +20,11 @@ The [transmitter.py](./transmitter.py) is executed inside a node-red flow.
 
 see `decoder.py`
 
+## Kaitai Struct
+
+Compile python module from schema with `kaitai-struct-compiler -t python iohomecontrol.ksy`
+Run `python3 kaitai-decoder.py`
+
 ## References
 
 - [yannikmotzet: VELUX INTEGRA® Control](https://github.com/yannikmotzet/velux-integra-control)
