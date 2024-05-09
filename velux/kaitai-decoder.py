@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Decode Symbols using auto-generated code"""
+"""Decode io-homecontrol packet using auto-generated code from Kaitai Struct"""
 
 # pip install crc kaitaistruct
 from crc import Calculator, Crc16
-from iohomecontrol import Iohomecontrol as iohc, KaitaiStream, BytesIO
+from iohomecontrol import Iohomecontrol, KaitaiStream, BytesIO
 
-packet = bytes([0xff, 0x33, 0xf6, 0x20, 0x00, 0x00, 0x3f, 0xda, 0x2c, 0x93, 0x00, 0x01, 0x61, 0xd2, 0x00, 0x00, 0x00, 0x04, 0x76, 0x23, 0x14, 0x50, 0x08, 0x11, 0x50, 0x2d, 0x15])
-decoded = iohc(KaitaiStream(BytesIO(packet)))
+#sample = "ff33 f8 00 00007f e1f573 00 0161d40080c80000 0daa eb6adf4f8fad 3404"
+sample = "FF 33 F6 00 00 00 3F 48 5B 37 00 01 43 D2 00 00 00       03 D6 B6 3C B3 CD CD 2B 8A 2E"
+
+packet = bytes.fromhex(sample)
+decoded = Iohomecontrol(KaitaiStream(BytesIO(packet)))
 
 print("Control 1:")
-print("    Order: {}".format(decoded.control1.order))
-print("    Mode: {}".format(decoded.control1.mode))
+print("    Order: {}".format(decoded.control1.order.name))
+print("    Mode: {}".format(decoded.control1.mode.name))
 print("    Payload Length: {}".format(decoded.control1.payload_length))
 print("Control 2:")
 print("    use_beacon: {}".format(decoded.control2.use_beacon))
@@ -21,10 +24,11 @@ print("    ack: {}".format(decoded.control2.ack))
 print("    protocol_version: {}".format(decoded.control2.protocol_version))
 print("Source Node-ID: 0x{:06x}".format(decoded.source_id))
 print("Target Node-ID: 0x{:06x}".format(decoded.target_id))
-print("Command: {}".format(decoded.command))
-print("Payload: {}".format(decoded.parameter.hex(" ")))
+print("Command: {}".format(decoded.command.name))
+print("Payload Bytes: [{}]".format(', '.join('0x{:02X}'.format(x) for x in decoded.parameter)))
 print("Counter: 0x{:04x} ({})".format(decoded.counter, decoded.counter))
-print("MAC: {}".format(decoded.mac.hex(" ")))
+print("MAC: 0x{:012x}".format(int.from_bytes(decoded.mac, "big")))
 
+# verify checksum; skip SFD and stop before the received checksum
 crc_ok = Calculator(Crc16.KERMIT).verify(packet[2:-2], decoded.checksum)
 print("Checksum: {} (0x{:04x})".format("OK" if crc_ok else "Error", decoded.checksum))
